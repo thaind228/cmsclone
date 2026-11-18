@@ -30,9 +30,10 @@ Hỏi người dùng chọn **Tạo mới** hay **Sửa / nâng cấp** nếu h�
 
 ## Sửa / nâng cấp
 
-Hỏi phần muốn sửa hoặc nâng cấp và vị trí project nếu chưa rõ. Đọc controller, view, DAO, route và quyền hiện tại. Lấy danh sách chức năng và hợp đồng SP từ chính code cần nâng cấp. Đưa giao diện hoặc cấu trúc được yêu cầu về mẫu của base, giữ tên route, binding, nghiệp vụ, quyền, cấu hình môi trường và menu quản trị đang hoạt động. Hỏi link sheet hoặc thông tin SSO khi thay đổi thực sự cần chúng.
-
-Khi thêm màn hình hoặc đổi route của màn hình nghiệp vụ, đăng ký mới hoặc cập nhật bản ghi chức năng trong DB theo cùng quy trình menu của luồng tạo mới.
+1. Dùng project hiện tại trong workspace. Nếu người dùng chỉ chọn chế độ **Sửa / nâng cấp**, tự rà soát cấu trúc và menu nghiệp vụ. Nếu họ yêu cầu sửa một phần cụ thể, giới hạn rà soát và thay đổi vào phần đó cùng các phụ thuộc trực tiếp. Chỉ hỏi vị trí khi chưa xác định được project.
+2. Đối chiếu solution, project reference, `Program.cs`, `app/config/appsettings.json`, profile chạy local, Dockerfile và các thành phần dùng chung với project nền. Đọc controller, view, route, DAO và cơ chế phân quyền để xác định màn hình hiện có. Tự bổ sung thành phần thiếu hoặc sửa liên kết cấu hình sai trong phạm vi yêu cầu. Giữ nghiệp vụ, route, binding, hợp đồng SP, quyền đã cấp và cấu hình môi trường hiện có.
+3. Lấy danh sách màn hình cần có mục menu từ các route hiển thị trang và mã kiểm tra quyền. Đối chiếu với nhóm, URL và `ActionName` trong DB đang dùng. Khi màn hình đã có nhưng thiếu mục menu, tạo nhóm hoặc bản ghi con còn thiếu theo [quy trình đăng ký trong DB](assets/base-project/README.md#menu-và-phân-quyền). Khi route đã đổi, cập nhật bản ghi khớp chắc chắn và giữ `FunctionID`. Giữ trạng thái ẩn, vô hiệu hóa và quyền đã cấp của các bản ghi hiện có trừ khi yêu cầu thay đổi chúng.
+   - Dùng kết nối của project hoặc tài khoản trong doc cho DB đích đã xác định. Nếu chưa kết nối được DB, tiếp tục sửa phần code có thể xác minh và bàn giao script chạy lại được để đối chiếu rồi bổ sung các mục thiếu trên DB. Chỉ hỏi link sheet hoặc thông tin SSO khi cần cho phần đang sửa.
 
 ## Kiểm tra bàn giao
 
