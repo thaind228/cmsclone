@@ -42,7 +42,12 @@ Bật `ViewData["UseImagePicker"] = true;` trong view chính dùng layout CMS, k
     <button type="button" class="btn btn-outline-secondary" data-cms-image-browse>Browse</button>
     <button type="button" class="btn btn-outline-secondary" data-cms-image-preview
             aria-label="Xem trước ảnh" title="Xem trước ảnh">
-        <i class="ri ri-eye-line" aria-hidden="true"></i>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
     </button>
 </div>
 <span asp-validation-for="ImageUrl" class="text-danger"></span>
