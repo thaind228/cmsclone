@@ -291,99 +291,73 @@ namespace CmsBase.Services
         }
 
 
-        // Chỉ lấy ảnh/file trực tiếp trong thư mục đang mở.
-        // Các thư mục con được lấy riêng bằng GetFoldersAsync.
-        public async Task<List<StorageFile>> GetFilesAsync(
-            string? prefix = "")
+        public async Task<List<StorageFile>> GetFilesAsync(string? prefix = "")
         {
-            var result = new List<StorageFile>();
-
-            var request = new ListObjectsV2Request
-            {
-                BucketName = _options.BucketName,
-                Prefix = GetFullPrefix(prefix),
-                Delimiter = "/"
-            };
-
-            ListObjectsV2Response response;
-
-            do
-            {
-                response = await Client.ListObjectsV2Async(request);
-
-                foreach (var item in response.S3Objects
-             ?? Enumerable.Empty<S3Object>())
-                {
-                    // Bỏ object đại diện thư mục.
-                    if (string.IsNullOrEmpty(item.Key) ||
-                        item.Key.EndsWith("/"))
-                    {
-                        continue;
-                    }
-
-                    var encodedKey = string.Join("/", item.Key.Split('/').Select(Uri.EscapeDataString));
-                    result.Add(new StorageFile
-                    {
-                        Key = item.Key,
-                        Url = $"{_options.PublicUrl.TrimEnd('/')}/{encodedKey}",
-                        Size = item.Size,
-                        LastModified = item.LastModified
-                    });
-                }
-
-                request.ContinuationToken =
-                    response.NextContinuationToken;
-
-            } while (response.IsTruncated == true);
-
-            return result
-                .OrderByDescending(x => x.LastModified)
-                .ToList();
+            var (files, _) = await GetDirectoryAsync(prefix, includeFolders: false);
+            return files;
         }
 
-        // Lấy tên các thư mục con trực tiếp của thư mục hiện tại.
         public async Task<List<string>> GetFoldersAsync(string? prefix = "")
         {
-            var result = new List<string>();
+            var (_, folders) = await ListDirectoryAsync(prefix, includeFiles: false, includeFolders: true);
+            return folders;
+        }
 
+        public Task<(List<StorageFile> Files, List<string> Folders)> GetDirectoryAsync(
+            string? prefix, bool includeFolders, CancellationToken cancellationToken = default)
+            => ListDirectoryAsync(prefix, includeFiles: true, includeFolders: includeFolders, cancellationToken);
+
+        // S3 returns direct objects and subfolder prefixes in the same listing.
+        private async Task<(List<StorageFile> Files, List<string> Folders)> ListDirectoryAsync(
+            string? prefix, bool includeFiles, bool includeFolders, CancellationToken cancellationToken = default)
+        {
+            var client = Client;
+            var files = new List<StorageFile>();
+            var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var request = new ListObjectsV2Request
             {
                 BucketName = _options.BucketName,
                 Prefix = GetFullPrefix(prefix),
                 Delimiter = "/"
             };
+            var publicUrl = _options.PublicUrl.TrimEnd('/');
 
             ListObjectsV2Response response;
-
             do
             {
-                response = await Client.ListObjectsV2Async(request);
-
-                foreach (var item in response.CommonPrefixes
-                             ?? Enumerable.Empty<string>())
+                response = await client.ListObjectsV2Async(request, cancellationToken);
+                if (includeFiles)
                 {
-                    if (string.IsNullOrEmpty(item))
-                        continue;
-
-                    var folderName = item
-                        .TrimEnd('/')
-                        .Split('/')
-                        .LastOrDefault();
-
-                    if (!string.IsNullOrEmpty(folderName))
+                    foreach (var item in response.S3Objects ?? Enumerable.Empty<S3Object>())
                     {
-                        result.Add(folderName);
+                        if (string.IsNullOrEmpty(item.Key) || item.Key.EndsWith('/'))
+                            continue;
+
+                        var encodedKey = string.Join("/", item.Key.Split('/').Select(Uri.EscapeDataString));
+                        files.Add(new StorageFile
+                        {
+                            Key = item.Key,
+                            Url = $"{publicUrl}/{encodedKey}",
+                            Size = item.Size,
+                            LastModified = item.LastModified
+                        });
+                    }
+                }
+
+                if (includeFolders)
+                {
+                    foreach (var item in response.CommonPrefixes ?? Enumerable.Empty<string>())
+                    {
+                        var name = item?.TrimEnd('/').Split('/').LastOrDefault();
+                        if (!string.IsNullOrEmpty(name))
+                            folders.Add(name);
                     }
                 }
 
                 request.ContinuationToken = response.NextContinuationToken;
-
             } while (response.IsTruncated == true);
 
-            return result
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(x => x)
-                .ToList();
+            return (files.OrderByDescending(file => file.LastModified).ToList(), folders.OrderBy(name => name).ToList());
         }
 
         // S3 không có thư mục vật lý; tạo object có key kết thúc bằng "/".

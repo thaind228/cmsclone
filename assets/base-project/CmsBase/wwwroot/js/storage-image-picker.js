@@ -37,6 +37,8 @@
     }
 
     function choose(url) {
+        if (!url) return;
+
         if (inDialog) {
             window.parent.postMessage({ type: 'cms:image-picker:select', url }, window.location.origin);
         } else if (window.parent !== window && window.parent.imagePickerType === 'ckeditor') {
@@ -158,13 +160,12 @@
             button.addEventListener('click', () => navigate(currentPrefix + name + '/'));
         } else {
             button.setAttribute('aria-pressed', 'false');
-            button.addEventListener('click', () => {
-                setSelection(button, file.url);
-                if (!inDialog && window.parent !== window) choose(file.url);
-            });
+            button.addEventListener('click', () => setSelection(button, file.url));
+            button.addEventListener('dblclick', () => choose(file.url));
             if (file.isImage) {
                 const image = document.createElement('img');
                 image.loading = 'lazy';
+                image.decoding = 'async';
                 image.alt = '';
                 image.addEventListener('error', () => image.remove());
                 image.src = file.url;

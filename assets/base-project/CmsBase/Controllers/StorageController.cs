@@ -84,7 +84,9 @@ namespace CmsBase.Controllers
                 if (page < 1)
                     page = 1;
 
-                var files = await _storageService.GetFilesAsync(prefix);
+                var showFolders = page == 1 && string.IsNullOrWhiteSpace(keyword);
+                var (files, folders) = await _storageService.GetDirectoryAsync(
+                    prefix, showFolders, HttpContext.RequestAborted);
                 if (imageOnly)
                     files = files.Where(file => IsImage(file.Key)).ToList();
 
@@ -97,22 +99,12 @@ namespace CmsBase.Controllers
                         .ToList();
                 }
 
-                files = files
-                    .OrderByDescending(x => x.LastModified)
-                    .ToList();
-
                 var total = files.Count;
 
                 var pagedFiles = files
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
-
-                // Chỉ lấy thư mục con khi ở trang đầu và không tìm kiếm.
-                var folders = page == 1 &&
-                              string.IsNullOrWhiteSpace(keyword)
-                    ? await _storageService.GetFoldersAsync(prefix)
-                    : new List<string>();
 
                 return Json(new
                 {
@@ -125,6 +117,10 @@ namespace CmsBase.Controllers
                     count = pagedFiles.Count,
                     hasMore = page * pageSize < total
                 });
+            }
+            catch (OperationCanceledException) when (HttpContext.RequestAborted.IsCancellationRequested)
+            {
+                return new EmptyResult();
             }
             catch (Exception ex)
             {

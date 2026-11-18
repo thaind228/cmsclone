@@ -17,6 +17,9 @@ namespace CmsBase.Services
         Task<List<string>> GetFoldersAsync(
             string? prefix = "");
 
+        Task<(List<StorageFile> Files, List<string> Folders)> GetDirectoryAsync(
+            string? prefix, bool includeFolders, CancellationToken cancellationToken = default);
+
         Task<bool> CreateFolderAsync(
             string folderName,
             string? prefix = "");
