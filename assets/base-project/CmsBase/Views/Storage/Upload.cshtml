@@ -3,6 +3,7 @@
 }
 
 <section class="cms-panel cms-upload" aria-labelledby="upload-title">
+    @Html.AntiForgeryToken()
     <div class="d-flex align-items-center gap-3 mb-4">
         <span class="cms-feature-icon"><i class="ri ri-upload-cloud-2-line" aria-hidden="true"></i></span>
         <h1 class="cms-page-heading" id="upload-title">Tải tệp lên CDN</h1>
@@ -35,6 +36,7 @@
             for (var i = 0; i < files.length; i++) {
                 var formData = new FormData();
                 formData.append("files", files[i]);
+                formData.append("__RequestVerificationToken", $(".cms-upload input[name='__RequestVerificationToken']").val());
 
                 $("#result").text("Đang upload " + (i + 1) + "/" + files.length + ": " + files[i].name);
 

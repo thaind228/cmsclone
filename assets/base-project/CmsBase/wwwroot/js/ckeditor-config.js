@@ -48,6 +48,10 @@ class ImagePickerPlugin {
 
                     currentEditor = editor;
 
+                    if (window.cmsImagePicker) {
+                        window.cmsImagePicker.open(url => openCKEditorImageSizeDialog(url, editor));
+                        return;
+                    }
                     window.imagePickerType = "ckeditor";
 
                     openImagePickerCKEditor();

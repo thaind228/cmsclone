@@ -19,6 +19,11 @@
 <body data-cms-image-picker-url="@Url.Action("ImagePicker", "Storage")">
     @RenderBody()
 
+    @if (ViewData["UseImagePicker"] is true || ViewData["UseEditor"] is true)
+    {
+        <partial name="_ImagePickerDialog" />
+    }
+
     @await Html.PartialAsync("Sections/_Scripts")
     @await RenderSectionAsync("VendorScripts", required: false)
     @await RenderSectionAsync("PageScripts", required: false)

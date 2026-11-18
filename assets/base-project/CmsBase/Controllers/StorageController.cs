@@ -14,7 +14,10 @@ namespace CmsBase.Controllers
     [Route("[controller]/[action]")]
     public class StorageController : Controller
     {
-        private UserFunction Permission { get { return SessionHelper.GetPermission(HttpContext.Session) ?? new UserFunction(); } }
+        private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif", ".bmp", ".ico", ".apng", ".jfif"
+        };
         private readonly IStorageService _storageService;
         private readonly ILogger<StorageController> _logger;
         public readonly CmsDataAccess _da;
@@ -30,30 +33,23 @@ namespace CmsBase.Controllers
         [HttpGet]
         public IActionResult Upload()
         {
-            var session = SessionHelper.GetUser(HttpContext.Session);
-            try
-            {
-                var userValidate = new UserValidate(_da);
-                var checkPermission = userValidate.CheckPermissionUser(HttpContext.Session, "Upload", Int32.Parse(session.Id), session.IsAdmin);
-                if (!checkPermission || Permission == null)
-                {
-                    return View("AccessDenied");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Upload : " + ex.ToString());
-            }
+            if (GetStoragePermission()?.IsInsert != true)
+                return View("AccessDenied");
+
             return View();
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         [RequestSizeLimit(524288000)]
         [RequestFormLimits(MultipartBodyLengthLimit = 524288000)]
         public async Task<IActionResult> Upload(
     List<IFormFile> files,
     string? prefix = "")
         {
+            if (GetStoragePermission()?.IsInsert != true)
+                return StatusCode(StatusCodes.Status403Forbidden);
+
             try
             {
                 if (files == null || files.Count == 0)
@@ -91,7 +87,8 @@ namespace CmsBase.Controllers
         public async Task<IActionResult> GetFiles(
             string? prefix = "",
             int page = 1,
-            string? keyword = "")
+            string? keyword = "",
+            bool imageOnly = false)
         {
             try
             {
@@ -101,6 +98,8 @@ namespace CmsBase.Controllers
                     page = 1;
 
                 var files = await _storageService.GetFilesAsync(prefix);
+                if (imageOnly)
+                    files = files.Where(file => IsImage(file.Key)).ToList();
 
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
@@ -131,7 +130,10 @@ namespace CmsBase.Controllers
                 return Json(new
                 {
                     success = true,
-                    files = pagedFiles,
+                    files = pagedFiles.Select(file => new
+                    {
+                        file.Key, file.Url, file.Size, file.LastModified, IsImage = IsImage(file.Key)
+                    }),
                     folders,
                     count = pagedFiles.Count,
                     hasMore = page * pageSize < total
@@ -175,10 +177,14 @@ namespace CmsBase.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateFolder(
             string folderName,
             string? prefix = "")
         {
+            if (GetStoragePermission()?.IsInsert != true)
+                return StatusCode(StatusCodes.Status403Forbidden);
+
             try
             {
                 await _storageService.CreateFolderAsync(folderName, prefix);
@@ -203,8 +209,12 @@ namespace CmsBase.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string key)
         {
+            if (GetStoragePermission()?.IsDelete != true)
+                return StatusCode(StatusCodes.Status403Forbidden);
+
             try
             {
                 var result = await _storageService.DeleteAsync(key);
@@ -228,10 +238,14 @@ namespace CmsBase.Controllers
 
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteFolder(
             string folderName,
             string? prefix = "")
         {
+            if (GetStoragePermission()?.IsDelete != true)
+                return StatusCode(StatusCodes.Status403Forbidden);
+
             try
             {
                 var result = await _storageService.DeleteFolderAsync(
@@ -258,30 +272,28 @@ namespace CmsBase.Controllers
         }
 
         [HttpGet]
-        public IActionResult ImagePicker()
+        public IActionResult ImagePicker(bool imageOnly = false, bool dialog = false)
         {
-            var session = SessionHelper.GetUser(HttpContext.Session);
-
-            try
-            {
-                var userValidate = new UserValidate(_da);
-                //var checkPermission = userValidate.CheckPermissionUser(
-                //    HttpContext.Session,
-                //    "Upload",
-                //    Int32.Parse(session.Id),
-                //    session.IsAdmin);
-
-                //if (!checkPermission || Permission == null)
-                //{
-                //    return View("AccessDenied");
-                //}
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "ImagePicker");
-            }
-
+            var permission = GetStoragePermission();
+            ViewData["CanUpload"] = permission?.IsInsert == true;
+            ViewData["CanDelete"] = permission?.IsDelete == true;
+            ViewData["ImageOnly"] = imageOnly;
+            ViewData["PickerDialog"] = dialog;
             return View();
         }
+
+        private UserFunction? GetStoragePermission()
+        {
+            var session = SessionHelper.GetUser(HttpContext.Session);
+            if (session is null || !int.TryParse(session.Id, out var userId))
+                return null;
+
+            var validator = new UserValidate(_da);
+            return validator.CheckPermissionUser(HttpContext.Session, "Upload", userId, session.IsAdmin)
+                ? SessionHelper.GetPermission(HttpContext.Session)
+                : null;
+        }
+
+        private static bool IsImage(string key) => ImageExtensions.Contains(Path.GetExtension(key));
     }
 }

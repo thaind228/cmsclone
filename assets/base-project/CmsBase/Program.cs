@@ -7,13 +7,17 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration.Json;
 
 var builder = WebApplication.CreateBuilder(args);
-// Keep environment-specific settings, environment variables, and CLI arguments above the base file.
-builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
+const string mountedSettingsPath = "/config/appsettings.json";
+var settingsFile = new JsonConfigurationSource
 {
-    FileProvider = builder.Environment.ContentRootFileProvider,
-    Path = "app/config/appsettings.json",
+    Path = OperatingSystem.IsLinux() && File.Exists(mountedSettingsPath)
+        ? mountedSettingsPath
+        : Path.Combine(builder.Environment.ContentRootPath, "app", "config", "appsettings.json"),
     ReloadOnChange = true
-});
+};
+settingsFile.ResolveFileProvider();
+// Keep environment-specific settings, environment variables, and CLI arguments above the base file.
+builder.Configuration.Sources.Insert(0, settingsFile);
 builder.UseCmsNLog();
 
 const int uploadLimit = 500 * 1024 * 1024;

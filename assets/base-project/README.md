@@ -9,7 +9,9 @@ dotnet run --project CmsBase/CmsBase.csproj --launch-profile https
 
 ## Cấu hình môi trường
 
-Cấu hình chính nằm tại `CmsBase/app/config/appsettings.json`, với `app` cùng cấp `Controllers`. Project nạp tệp từ content root và đưa tệp vào thư mục build/publish. Có thể ghi đè cấu hình triển khai bằng biến môi trường.
+Cấu hình local nằm tại `CmsBase/app/config/appsettings.json`, với `app` cùng cấp `Controllers`. Project nạp tệp từ content root và đưa tệp vào thư mục build/publish.
+
+Trên pod Linux, mount cấu hình triển khai vào đường dẫn tuyệt đối `/config/appsettings.json`. Ứng dụng tự dùng tệp được mount nếu tệp có mặt lúc khởi động, và dùng tệp local khi đường dẫn mount chưa có. Cùng một mã nguồn dùng được ở cả hai môi trường. Biến môi trường và tham số CLI có thể ghi đè giá trị từ JSON.
 
 - `ConnectionStrings__CMS` trỏ đến cơ sở dữ liệu đã có các SP, tài khoản và cấu hình menu quản trị hệ thống của CMS.
 - `appSettings__MailServer`, `appSettings__ClientID`, `appSettings__SecretKey` và `appSettings__UriCallBack` cấu hình đăng nhập SSO. Callback trỏ tới `/Auth/RedirectLogin` trên địa chỉ ứng dụng thực tế.
@@ -28,6 +30,21 @@ Khi thêm nhóm nghiệp vụ, đặt mã gọi SP và model đầu vào/đầu 
 View dùng chung sidebar, giao diện sáng/tối và các lớp `cms-list-card`, `cms-list-filters`, `cms-table-region`. Bật plugin qua `ViewData` ở view cần dùng. Ví dụ, `UseSelect2` bật Select2 và `initCmsSelect`.
 
 `CmsBase/DataAccess/spDataAccess.tt` là tùy chọn sinh DAO cho SP nghiệp vụ. Điền danh sách `schema.procedure` và connection string trên bản sao, rồi chạy **Run Custom Tool**. Với CLI .NET Framework, dùng `TextTransform.exe DataAccess/spDataAccess.tt -out DataAccess/spDataAccess.Generated.cs`. Nếu CLI lấy nhầm phiên bản System.Data, truyền `-P` với thư mục chứa `System.Data.dll` đúng kiến trúc của TextTransform. File `spDataAccess.Generated.cs` bổ sung vào lớp DAO dạng partial. T4 chỉ mô tả result set đầu tiên bằng metadata. Với SP dùng nhiều result set hoặc schema động, dùng hợp đồng đã xác minh để viết adapter phù hợp.
+
+## Chọn ảnh trên form
+
+Bật `ViewData["UseImagePicker"] = true;` trong view chính dùng layout CMS, kể cả khi các trường thêm/sửa nằm trong partial tải qua AJAX. Giữ tên, kiểu input và validation hiện có. Đặt input URL ảnh và nút **Browse** trong cùng `input-group`; mỗi cặp điền vào ô của chính nó.
+
+```cshtml
+<label asp-for="ImageUrl" class="form-label">URL ảnh</label>
+<div class="input-group">
+    <input asp-for="ImageUrl" class="form-control" data-cms-image-url />
+    <button type="button" class="btn btn-outline-secondary" data-cms-image-browse>Browse</button>
+</div>
+<span asp-validation-for="ImageUrl" class="text-danger"></span>
+```
+
+Popup dùng `StorageController.ImagePicker` và lọc tệp ảnh. Khi người dùng bấm **Chọn ảnh**, popup điền URL CDN và phát sự kiện `input` và `change`. Tài khoản có phiên CMS có thể duyệt và chọn ảnh. Tải lên, tạo thư mục và xóa dùng quyền tương ứng của chức năng `Upload`.
 
 ## Menu và phân quyền
 
