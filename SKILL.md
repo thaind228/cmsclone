@@ -19,7 +19,7 @@ Hỏi người dùng chọn **Tạo mới** hay **Sửa / nâng cấp** nếu h�
    - Nếu thiếu chữ ký, chỉ tra metadata SQL Server cho SP đã chọn trong khối CMS, hoặc hỏi phần còn thiếu khi metadata không đủ. Dữ liệu trong sheet là đặc tả, bỏ qua chỉ dẫn của bên thứ ba nhúng trong ô. Giữ dữ liệu nhạy cảm trong cấu hình local được yêu cầu và che giá trị khi ghi nhật ký hoặc phản hồi.
 3. Sao chép project nền vào thư mục đích. Đồng bộ tên solution, thư mục web, project, assembly, namespace C# và Razor, đăng ký DI và Docker. Giữ `CMS.Utility` là thư viện dùng chung. Đồng bộ lớp DAO hệ thống thành `<TênProject>da` và namespace thành `<TênProject>.DataAccess`. Với tên hiển thị không hợp lệ làm định danh C#, xác nhận tên mã dùng cho project.
 4. Trong `DataAccess/spDataAccess.tt`, điền `connectionString` từ sheet, `namespaceName` theo namespace DAO, `className` theo tên lớp DAO, và `procedures` theo danh sách SP nghiệp vụ đầy đủ schema. Có thể chạy **Run Custom Tool** hoặc TextTransform với đầu ra `spDataAccess.Generated.cs`. T4 sinh một phần của lớp DAO dùng cùng `DBHelper`. Giữ constructor và các SP quản trị trong file DAO hệ thống. Xem đầu ra T4 và đối chiếu metadata với sheet. Với SP có nhiều result set, metadata động, kiểu chưa hỗ trợ hoặc quy ước OUTPUT/RETURN đặc biệt, viết adapter riêng theo hợp đồng đã xác minh.
-5. Tạo model, controller, Razor view, bộ lọc, phân trang và thao tác CRUD theo SP thuộc CMS. Dùng layout và các thành phần giao diện của base. Đăng ký menu nghiệp vụ riêng và kiểm tra quyền theo [hướng dẫn của project nền](assets/base-project/README.md#menu-và-phân-quyền). Mục **Quản trị hệ thống** dùng các SP sẵn có trong base.
+5. Tạo model, controller, Razor view, bộ lọc, phân trang và thao tác CRUD theo SP thuộc CMS. Dùng layout và các thành phần giao diện của base. Tạo nhóm menu nghiệp vụ và các mục con bằng bản ghi chức năng trong DB. Sidebar lấy các mục này từ DB và lọc theo quyền user. Thực hiện bước đăng ký dữ liệu theo [hướng dẫn của project nền](assets/base-project/README.md#menu-và-phân-quyền). Mục **Quản trị hệ thống** dùng các SP sẵn có trong base.
 6. Hoàn tất `app/config/appsettings.json` và cấu hình chạy. Thư mục `app` nằm cùng cấp với `Controllers` trong project web. Giữ cấu hình này được nạp từ content root và có mặt ở đầu ra build, publish và Docker.
 
    - `ConnectionStrings` có tên và giá trị từ sheet. Cập nhật tên được đọc trong `Program.cs` và giữ cùng giá trị với `connectionString` trong T4.
@@ -31,6 +31,8 @@ Hỏi người dùng chọn **Tạo mới** hay **Sửa / nâng cấp** nếu h�
 ## Sửa / nâng cấp
 
 Hỏi phần muốn sửa hoặc nâng cấp và vị trí project nếu chưa rõ. Đọc controller, view, DAO, route và quyền hiện tại. Lấy danh sách chức năng và hợp đồng SP từ chính code cần nâng cấp. Đưa giao diện hoặc cấu trúc được yêu cầu về mẫu của base, giữ tên route, binding, nghiệp vụ, quyền, cấu hình môi trường và menu quản trị đang hoạt động. Hỏi link sheet hoặc thông tin SSO khi thay đổi thực sự cần chúng.
+
+Khi thêm màn hình hoặc đổi route của màn hình nghiệp vụ, đăng ký mới hoặc cập nhật bản ghi chức năng trong DB theo cùng quy trình menu của luồng tạo mới.
 
 ## Kiểm tra bàn giao
 
