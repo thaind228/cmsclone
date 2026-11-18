@@ -4,8 +4,16 @@ using CmsBase.Options;
 using CmsBase.Services;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Configuration.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+// Keep environment-specific settings, environment variables, and CLI arguments above the base file.
+builder.Configuration.Sources.Insert(0, new JsonConfigurationSource
+{
+    FileProvider = builder.Environment.ContentRootFileProvider,
+    Path = "app/config/appsettings.json",
+    ReloadOnChange = true
+});
 builder.UseCmsNLog();
 
 const int uploadLimit = 500 * 1024 * 1024;

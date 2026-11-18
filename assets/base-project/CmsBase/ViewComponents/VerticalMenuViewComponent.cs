@@ -24,16 +24,17 @@ public class VerticalMenuViewComponent(CmsDataAccess dataAccess) : ViewComponent
     private IReadOnlyList<CmsNavigationGroup> BuildGroups()
     {
         var user = SessionHelper.GetUser(HttpContext.Session);
-        if (user is null)
+        if (user is null || !int.TryParse(user.Id, out var userId))
             return [];
 
-        IEnumerable<(int Id, int ParentId, int Order, string Name, string? Url, bool Visible)> functions = user.IsAdmin
+        IEnumerable<(int Id, int ParentId, int Order, string Name, string? Url, bool Visible, string ActionName)> functions = user.IsAdmin
             ? dataAccess.SP_Functions_SelectByCondition_List(-1, "", 1, 1)
                 .Select(item => (item.FunctionID, item.ParentID ?? 0, item.Order ?? 0,
-                    item.FunctionName, item.Url, item.IsDisplay ?? false))
-            : dataAccess.SP_Function_GetByUserID_List(int.Parse(user.Id), -1)
+                    item.FunctionName, item.Url, item.IsDisplay ?? false, item.ActionName))
+            : dataAccess.SP_Function_GetByUserID_List(userId, -1)
+                .Where(item => item.IsActive != false)
                 .Select(item => (item.FunctionID, item.ParentID ?? 0, item.Order ?? 0,
-                    item.FunctionName, item.Url, item.IsDisplay ?? false));
+                    item.FunctionName, item.Url, item.IsDisplay ?? false, item.ActionName));
 
         var ordered = functions.OrderBy(item => item.Order).ToList();
         var children = ordered.Where(item => item.Visible && item.ParentId != 0)
@@ -49,6 +50,11 @@ public class VerticalMenuViewComponent(CmsDataAccess dataAccess) : ViewComponent
                 var route = child.Url?.Trim('/').Split('/');
                 if (route is null || route.Length < 2 || string.IsNullOrWhiteSpace(route[0]) ||
                     string.IsNullOrWhiteSpace(route[1]))
+                    continue;
+
+                if (!user.IsAdmin && (string.IsNullOrWhiteSpace(child.ActionName) ||
+                    !dataAccess.SP_CheckPermission_List(userId, child.ActionName)
+                        .Any(permission => permission.FunctionID == child.Id && permission.IsGrant)))
                     continue;
 
                 var isCurrent = string.Equals(currentController, route[0], StringComparison.OrdinalIgnoreCase) &&

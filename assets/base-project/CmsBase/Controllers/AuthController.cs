@@ -36,7 +36,7 @@ public class AuthController : Controller
             string linkLogin = AppConfig.AppSettings("MailServer");
 
             if (string.IsNullOrWhiteSpace(clientID) || string.IsNullOrWhiteSpace(UriCallB) ||
-                string.IsNullOrWhiteSpace(linkLogin))
+                string.IsNullOrWhiteSpace(linkLogin) || string.IsNullOrWhiteSpace(AppConfig.AppSettings("SecretKey")))
             {
                 ViewData["SsoSetupRequired"] = true;
                 return View();

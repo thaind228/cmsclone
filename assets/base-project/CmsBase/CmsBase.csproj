@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="app/config/appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="DataAccess\spDataAccess.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
       <LastGenOutput>spDataAccess.Generated.cs</LastGenOutput>

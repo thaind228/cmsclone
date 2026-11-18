@@ -41,6 +41,9 @@ namespace CmsBase.Controllers.Common
                 else //Lấy quyền của user khi truy cập chức năng
                 {
                     var permissionDB = _da.SP_CheckPermission_List(UserId, Action).FirstOrDefault();
+                    if (permissionDB is null || permissionDB.FunctionID != m_function.FunctionID || !permissionDB.IsGrant)
+                        return false;
+
                     permission.FunctionID = permissionDB.FunctionID;
                     permission.FunctionName = permissionDB.FunctionName;
                     permission.ActionName = permissionDB.ActionName;
