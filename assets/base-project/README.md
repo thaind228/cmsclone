@@ -40,6 +40,10 @@ Bật `ViewData["UseImagePicker"] = true;` trong view chính dùng layout CMS, k
 <div class="input-group">
     <input asp-for="ImageUrl" class="form-control" data-cms-image-url />
     <button type="button" class="btn btn-outline-secondary" data-cms-image-browse>Browse</button>
+    <button type="button" class="btn btn-outline-secondary" data-cms-image-preview
+            aria-label="Xem trước ảnh" title="Xem trước ảnh">
+        <i class="ri ri-eye-line" aria-hidden="true"></i>
+    </button>
 </div>
 <span asp-validation-for="ImageUrl" class="text-danger"></span>
 ```
