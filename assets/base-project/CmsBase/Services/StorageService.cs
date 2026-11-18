@@ -11,14 +11,33 @@ using Microsoft.Extensions.Options;
 
 namespace CmsBase.Services
 {
-    public class StorageService : IStorageService
+    public class StorageService : IStorageService, IDisposable
     {
         private readonly StorageOptions _options;
-        private readonly AmazonS3Client _client;
+        private readonly Lazy<AmazonS3Client> _client;
+        private AmazonS3Client Client => _client.Value;
 
         public StorageService(IOptions<StorageOptions> options)
         {
             _options = options.Value;
+            _client = new Lazy<AmazonS3Client>(CreateClient);
+        }
+
+        private AmazonS3Client CreateClient()
+        {
+            var required = new Dictionary<string, string>
+            {
+                [nameof(StorageOptions.AccessKey)] = _options.AccessKey,
+                [nameof(StorageOptions.SecretKey)] = _options.SecretKey,
+                [nameof(StorageOptions.Endpoint)] = _options.Endpoint,
+                [nameof(StorageOptions.BucketName)] = _options.BucketName,
+                [nameof(StorageOptions.PublicUrl)] = _options.PublicUrl,
+                [nameof(StorageOptions.Folder)] = _options.Folder
+            };
+            var missing = required.Where(setting => string.IsNullOrWhiteSpace(setting.Value))
+                .Select(setting => setting.Key).ToList();
+            if (missing.Count > 0)
+                throw new InvalidOperationException("Thiếu cấu hình Storage: " + string.Join(", ", missing) + ".");
 
             var credentials = new BasicAWSCredentials(_options.AccessKey, _options.SecretKey);
 
@@ -29,7 +48,13 @@ namespace CmsBase.Services
                 Timeout = TimeSpan.FromMinutes(30)
             };
 
-            _client = new AmazonS3Client(credentials, config);
+            return new AmazonS3Client(credentials, config);
+        }
+
+        public void Dispose()
+        {
+            if (_client.IsValueCreated)
+                _client.Value.Dispose();
         }
 
         // Chuẩn hóa prefix, luôn giới hạn trong thư mục gốc StorageOptions.Folder.
@@ -100,7 +125,7 @@ namespace CmsBase.Services
             var result = new List<string>();
             var fullPrefix = GetFullPrefix(prefix);
 
-            using var transferUtility = new TransferUtility(_client);
+            using var transferUtility = new TransferUtility(Client);
 
             foreach (var file in files)
             {
@@ -186,7 +211,7 @@ namespace CmsBase.Services
                 Key = key
             };
 
-            await _client.DeleteObjectAsync(request);
+            await Client.DeleteObjectAsync(request);
             return true;
         }
 
@@ -226,7 +251,7 @@ namespace CmsBase.Services
                 };
 
                 var listResponse =
-                    await _client.ListObjectsV2Async(listRequest);
+                    await Client.ListObjectsV2Async(listRequest);
 
                 var objects = (listResponse.S3Objects
                     ?? Enumerable.Empty<S3Object>())
@@ -244,7 +269,7 @@ namespace CmsBase.Services
                     };
 
                     var deleteResponse =
-                        await _client.DeleteObjectsAsync(deleteRequest);
+                        await Client.DeleteObjectsAsync(deleteRequest);
 
                     if (deleteResponse.DeleteErrors != null &&
                         deleteResponse.DeleteErrors.Count > 0)
@@ -284,7 +309,7 @@ namespace CmsBase.Services
 
             do
             {
-                response = await _client.ListObjectsV2Async(request);
+                response = await Client.ListObjectsV2Async(request);
 
                 foreach (var item in response.S3Objects
              ?? Enumerable.Empty<S3Object>())
@@ -296,10 +321,11 @@ namespace CmsBase.Services
                         continue;
                     }
 
+                    var encodedKey = string.Join("/", item.Key.Split('/').Select(Uri.EscapeDataString));
                     result.Add(new StorageFile
                     {
                         Key = item.Key,
-                        Url = $"{_options.PublicUrl.TrimEnd('/')}/{item.Key}",
+                        Url = $"{_options.PublicUrl.TrimEnd('/')}/{encodedKey}",
                         Size = item.Size,
                         LastModified = item.LastModified
                     });
@@ -331,7 +357,7 @@ namespace CmsBase.Services
 
             do
             {
-                response = await _client.ListObjectsV2Async(request);
+                response = await Client.ListObjectsV2Async(request);
 
                 foreach (var item in response.CommonPrefixes
                              ?? Enumerable.Empty<string>())
@@ -389,7 +415,7 @@ namespace CmsBase.Services
                 ContentBody = ""
             };
 
-            await _client.PutObjectAsync(request);
+            await Client.PutObjectAsync(request);
             return true;
         }
     }

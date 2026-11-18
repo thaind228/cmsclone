@@ -1,9 +1,4 @@
-﻿using Amazon.S3.Model;
-using CMS.Utility;
-using CMS.Utility.Model;
-using CmsBase.Controllers.Common;
-using CmsBase.DataAccess;
-using CmsBase.Models;
+﻿using CmsBase.Controllers.Common;
 using CmsBase.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,22 +15,17 @@ namespace CmsBase.Controllers
         };
         private readonly IStorageService _storageService;
         private readonly ILogger<StorageController> _logger;
-        public readonly CmsDataAccess _da;
 
         public StorageController(
             IStorageService storageService,
-            ILogger<StorageController> logger , CmsDataAccess da)
+            ILogger<StorageController> logger)
         {
             _storageService = storageService;
             _logger = logger;
-            _da = da;
         }
         [HttpGet]
         public IActionResult Upload()
         {
-            if (GetStoragePermission()?.IsInsert != true)
-                return View("AccessDenied");
-
             return View();
         }
 
@@ -47,9 +37,6 @@ namespace CmsBase.Controllers
     List<IFormFile> files,
     string? prefix = "")
         {
-            if (GetStoragePermission()?.IsInsert != true)
-                return StatusCode(StatusCodes.Status403Forbidden);
-
             try
             {
                 if (files == null || files.Count == 0)
@@ -182,9 +169,6 @@ namespace CmsBase.Controllers
             string folderName,
             string? prefix = "")
         {
-            if (GetStoragePermission()?.IsInsert != true)
-                return StatusCode(StatusCodes.Status403Forbidden);
-
             try
             {
                 await _storageService.CreateFolderAsync(folderName, prefix);
@@ -212,9 +196,6 @@ namespace CmsBase.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(string key)
         {
-            if (GetStoragePermission()?.IsDelete != true)
-                return StatusCode(StatusCodes.Status403Forbidden);
-
             try
             {
                 var result = await _storageService.DeleteAsync(key);
@@ -243,9 +224,6 @@ namespace CmsBase.Controllers
             string folderName,
             string? prefix = "")
         {
-            if (GetStoragePermission()?.IsDelete != true)
-                return StatusCode(StatusCodes.Status403Forbidden);
-
             try
             {
                 var result = await _storageService.DeleteFolderAsync(
@@ -274,24 +252,9 @@ namespace CmsBase.Controllers
         [HttpGet]
         public IActionResult ImagePicker(bool imageOnly = false, bool dialog = false)
         {
-            var permission = GetStoragePermission();
-            ViewData["CanUpload"] = permission?.IsInsert == true;
-            ViewData["CanDelete"] = permission?.IsDelete == true;
             ViewData["ImageOnly"] = imageOnly;
             ViewData["PickerDialog"] = dialog;
             return View();
-        }
-
-        private UserFunction? GetStoragePermission()
-        {
-            var session = SessionHelper.GetUser(HttpContext.Session);
-            if (session is null || !int.TryParse(session.Id, out var userId))
-                return null;
-
-            var validator = new UserValidate(_da);
-            return validator.CheckPermissionUser(HttpContext.Session, "Upload", userId, session.IsAdmin)
-                ? SessionHelper.GetPermission(HttpContext.Session)
-                : null;
         }
 
         private static bool IsImage(string key) => ImageExtensions.Contains(Path.GetExtension(key));

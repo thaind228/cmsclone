@@ -2,8 +2,6 @@
     Layout = "_BlankLayout";
     ViewData["Title"] = "Thư viện ảnh";
     ViewData["MinimalAssets"] = true;
-    var canUpload = ViewData["CanUpload"] is true;
-    var canDelete = ViewData["CanDelete"] is true;
     var imageOnly = ViewData["ImageOnly"] is true;
     var inDialog = ViewData["PickerDialog"] is true;
 }
@@ -27,28 +25,19 @@
                 <input class="form-control" type="search" aria-label="Tìm trong thư mục hiện tại"
                        placeholder="Tìm trong thư mục…" data-media-search />
             </label>
-            @if (canUpload)
-            {
-                <button type="button" class="btn btn-outline-secondary" data-media-new-folder aria-expanded="false"
-                        aria-controls="storage-new-folder">Tạo thư mục</button>
-                <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" data-media-upload>
-                    <i class="ri ri-upload-cloud-2-line" aria-hidden="true"></i> Tải lên
-                </button>
-                <input type="file" data-media-file-input multiple hidden
-                       accept="@(imageOnly ? "image/*" : "image/*,video/mp4,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.apk")" />
-            }
+            <button type="button" class="btn btn-outline-secondary" data-media-new-folder aria-expanded="false"
+                    aria-controls="storage-new-folder">Tạo thư mục</button>
+            <button type="button" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" data-media-upload>
+                <i class="ri ri-upload-cloud-2-line" aria-hidden="true"></i> Tải lên
+            </button>
+            <input type="file" data-media-file-input multiple hidden
+                   accept="@(imageOnly ? "image/*" : "image/*,video/mp4,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.apk")" />
         </div>
-        @if (canUpload)
-        {
-            <form id="storage-new-folder" class="cms-media-toolbar-row mt-2" hidden>
-                <input name="folderName" class="form-control" aria-label="Tên thư mục mới" placeholder="Tên thư mục mới" required />
-                <button class="btn btn-primary" type="submit">Tạo</button>
-            </form>
-        }
-        @if (canUpload || canDelete)
-        {
-            @Html.AntiForgeryToken()
-        }
+        <form id="storage-new-folder" class="cms-media-toolbar-row mt-2" hidden>
+            <input name="folderName" class="form-control" aria-label="Tên thư mục mới" placeholder="Tên thư mục mới" required />
+            <button class="btn btn-primary" type="submit">Tạo</button>
+        </form>
+        @Html.AntiForgeryToken()
         <nav class="cms-media-path" aria-label="Đường dẫn thư mục">
             <ol class="breadcrumb mb-0" data-media-path></ol>
         </nav>
@@ -82,12 +71,9 @@
                 </span>
                 <span class="cms-media-name"></span>
             </button>
-            @if (canDelete)
-            {
-                <button type="button" class="cms-media-delete" aria-label="Xóa" title="Xóa">
-                    <i class="ri ri-delete-bin-6-line" aria-hidden="true"></i>
-                </button>
-            }
+            <button type="button" class="cms-media-delete" aria-label="Xóa" title="Xóa">
+                <i class="ri ri-delete-bin-6-line" aria-hidden="true"></i>
+            </button>
         </article>
     </template>
 </main>

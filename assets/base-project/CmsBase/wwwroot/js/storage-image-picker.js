@@ -82,8 +82,11 @@
     async function request(url, options) {
         const response = await fetch(url, options);
         if (response.redirected || response.status === 401) throw new Error('Phiên đăng nhập đã hết hạn.');
-        if (response.status === 403) throw new Error('Tài khoản chưa được cấp quyền.');
+        if (response.status === 403) throw new Error('Máy chủ từ chối yêu cầu Storage (HTTP 403).');
         if (!response.ok) throw new Error('Yêu cầu thất bại (HTTP ' + response.status + ').');
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+            throw new Error('Storage trả về phản hồi không hợp lệ.');
+        }
         const data = await response.json();
         if (!data.success) throw new Error(data.message || 'Yêu cầu thất bại.');
         return data;
@@ -121,7 +124,11 @@
             data.files.forEach(file => appendCard(file.key.split('/').pop(), { file }));
             pagination.hidden = !data.hasMore;
             page++;
-            showNotice(grid.childElementCount ? '' : 'Không tìm thấy tệp trong thư mục.');
+            const itemName = picker.dataset.imageOnly === 'true' ? 'ảnh' : 'tệp';
+            const emptyMessage = search.value.trim()
+                ? 'Không có kết quả khớp với từ khóa.'
+                : 'Thư mục này chưa có ' + itemName + ' hoặc thư mục con.';
+            showNotice(grid.childElementCount ? '' : emptyMessage);
             return true;
         } catch (error) {
             if (error.name !== 'AbortError') showNotice(error.message, true);

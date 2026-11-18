@@ -44,7 +44,9 @@ Bật `ViewData["UseImagePicker"] = true;` trong view chính dùng layout CMS, k
 <span asp-validation-for="ImageUrl" class="text-danger"></span>
 ```
 
-Popup dùng `StorageController.ImagePicker` và lọc tệp ảnh. Khi người dùng bấm **Chọn ảnh**, popup điền URL CDN và phát sự kiện `input` và `change`. Tài khoản có phiên CMS có thể duyệt và chọn ảnh. Tải lên, tạo thư mục và xóa dùng quyền tương ứng của chức năng `Upload`.
+Popup dùng `StorageController.ImagePicker` và lọc tệp ảnh. Khi người dùng bấm **Chọn ảnh**, popup điền URL CDN và phát sự kiện `input` và `change`. Tài khoản có phiên CMS có thể duyệt, chọn, tải ảnh lên, tạo thư mục và xóa trong thư mục Storage đã cấu hình. Các POST dùng mã chống giả mạo. Những thao tác này độc lập với quyền chức năng CMS trong DB.
+
+Kết nối S3 và URL CDN lấy từ mục `Storage` trong tệp JSON cấu hình đang được ứng dụng nạp. Với bản nền, đó là `app/config/appsettings.json` ở local hoặc `/config/appsettings.json` trên pod. Nếu thiếu cấu hình, popup báo tên mục thiếu để kiểm tra. Thử Browse bằng tài khoản CMS thường và mở một ảnh trả về từ đúng bucket và folder đã cấu hình.
 
 ## Menu và phân quyền
 
