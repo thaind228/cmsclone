@@ -1,0 +1,330 @@
+﻿@using System.Text.Json
+
+@model List<CMS.Utility.Model.FunctionsGrant>
+
+@{
+    ViewData["Title"] = "Phân quyền chức năng";
+    ViewData["UseTreeView"] = true;
+    ViewData["UseSweetAlert"] = true;
+    var targetUserId = ViewBag.TargetUserId?.ToString();
+    var userInfo = ViewBag.UserInfo;
+}
+
+<div class="row g-6">
+    <div class="col-md-12">
+        <div class="card">
+            <h1 class="card-header cms-page-heading">@ViewData["Title"]</h1>
+            <div class="card-body">
+                <div class="row mb-4 align-items-end">
+                    <div class="col-md-4 d-flex align-items-center gap-2">
+                        <a asp-action="ManagerUser" asp-controller="Admin" class="btn btn-secondary">Quay lại</a>
+                    </div>
+
+                    <div class="tree-container col-12" style="margin-top:25px" aria-label="Functions tree">
+                        <form asp-action="SaveGrantUser" asp-controller="Admin" method="post" id="grantForm">
+                            @Html.AntiForgeryToken()
+                            <div id="functionTree"></div>
+
+                            <div class="mt-3">
+                                <button id="btnSaveGrants" type="submit" class="btn btn-primary">Lưu</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Hidden nestable not used here but kept for parity with ManagerFunction -->
+                    <div id="nestableContainer" class="mt-3 col-12" style="display:none">
+                        <div class="dd" id="functionNestable"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    /* reuse ManagerFunction styles for tree list appearance, reduce right padding so controls sit more left */
+    .tree-container .list-group-item {
+        padding-right: 200px; /* moved inwards so controls are closer to text */
+        position: relative;
+        overflow: visible;
+        border: 1px solid #e9ecef;
+        border-radius: .25rem;
+        margin-bottom: .5rem;
+        background: #fff;
+    }
+
+    /* grant controls float near the right but shifted left compared to previous */
+    .grant-controls {
+        position: absolute;
+        top: 8px;
+        right: 16px; /* closer to the content (moved left) */
+        z-index: 2;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .grant-controls .chk-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 0.75rem;
+        color: #212529;
+        min-width: 54px;
+    }
+
+    .grant-controls .chk-wrap div {
+        margin-top: 2px;
+        font-size: 10px;
+        color: #6c757d;
+    }
+
+    .grant-controls input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+    }
+
+    .fn-meta {
+        color: #6c757d; font-size: .875rem;
+    }
+</style>
+
+@section PageScripts {
+    <script>
+        // serialize model to JS
+        const functions = @Html.Raw(JsonSerializer.Serialize(Model ?? Enumerable.Empty<CMS.Utility.Model.FunctionsGrant>()));
+        const targetUserId = "@(targetUserId ?? "")";
+
+        (function () {
+            if (typeof jQuery === 'undefined') {
+                console.error('jQuery not found.');
+                return;
+            }
+
+            const $tree = $('#functionTree');
+
+            // Build nodes similar to ManagerFunction
+            const nodeMap = new Map();
+            functions.forEach((f, idx) => {
+                const node = {
+                    nodeId: f.FunctionID,
+                    id: f.FunctionID,
+                    parentId: f.ParentID || 0,
+                    text: f.FunctionName || '',
+                    order: f.Order ?? 0,
+                    nodes: [],
+                    _origIndex: idx // keep index for reference if needed
+                };
+                nodeMap.set(f.FunctionID, node);
+            });
+
+            const roots = [];
+            nodeMap.forEach(n => {
+                if (!n.parentId || n.parentId === 0 || !nodeMap.has(n.parentId)) {
+                    roots.push(n);
+                } else {
+                    nodeMap.get(n.parentId).nodes.push(n);
+                }
+            });
+
+            function sortNodes(arr) {
+                arr.sort((a, b) => {
+                    if ((a.order || 0) !== (b.order || 0)) return (a.order || 0) - (b.order || 0);
+                    return (a.text || '').localeCompare(b.text || '');
+                });
+                arr.forEach(n => { if (n.nodes && n.nodes.length) sortNodes(n.nodes); });
+            }
+            sortNodes(roots);
+
+            // Initialize treeview with minimal interactions — avoid binding click handlers that re-render nodes
+            $tree.treeview({
+                data: roots,
+                showTags: false,
+                showIcon: false,
+                levels: 99,
+                highlightSelected: false,
+                selectable: false,
+                onNodeCollapsed: function () { setTimeout(appendGrantControls, 0); },
+                onNodeExpanded: function () { setTimeout(appendGrantControls, 0); }
+            });
+
+            try { $tree.treeview('expandAll'); } catch (e) { }
+
+            // Remove any click/delegated click handlers attached elsewhere that may re-render or clear appended controls
+            try {
+                $tree.off('click');
+                $tree.off('click', '.list-group-item');
+            } catch (e) { /* ignore */ }
+
+            // We'll assign stable sequential indices for model binding.
+            // Use a map from FunctionID -> index and persist index as data attribute on the LI.
+            const fnIndexMap = new Map();
+            let nextIndex = 0;
+
+            // Re-append controls after any DOM mutations inside tree (defensive — ensures controls persist)
+            const observer = new MutationObserver(function () {
+                setTimeout(appendGrantControls, 0);
+            });
+            observer.observe($tree[0], { childList: true, subtree: true });
+
+            // Append checkbox controls to each rendered node list item.
+            function appendGrantControls() {
+                $tree.find('[data-nodeid]').each(function () {
+                    const $li = $(this);
+
+                    // If we've already attached controls to this LI, skip.
+                    if ($li.data('grant-index') !== undefined) return;
+
+                    const treeNodeId = $li.data('nodeid');
+                    let nodeObj = null;
+                    try { nodeObj = $tree.treeview('getNode', treeNodeId); } catch (e) { nodeObj = null; }
+                    const fnId = (nodeObj && (nodeObj.id !== undefined && nodeObj.id !== null)) ? nodeObj.id : treeNodeId;
+
+                    // Determine index for this function (stable)
+                    let inputIndex;
+                    if (fnIndexMap.has(fnId)) {
+                        inputIndex = fnIndexMap.get(fnId);
+                    } else {
+                        inputIndex = nextIndex++;
+                        fnIndexMap.set(fnId, inputIndex);
+                    }
+
+                    // mark LI so we never re-create inputs
+                    $li.data('grant-index', inputIndex);
+
+                    // find function initial state from model (if present)
+                    const fnModel = functions.find(x => x.FunctionID === fnId) || { FunctionID: fnId, FunctionName: nodeObj?.text || '', IsGrant: false, IsInsert: false, IsUpdate: false, IsDelete: false };
+
+                    // Build controls (note: using data-* attributes for checkboxes; we'll compose ListAddGrant/ListDelGrant on submit)
+                    const $wrap = $('<div/>', { 'class': 'grant-controls', 'aria-hidden': 'false' });
+
+                    function makeChkData(name, checked, label) {
+                        const $cwrap = $('<div/>', { 'class': 'chk-wrap', title: label });
+                        // checkbox with data-name attribute (no model-binding name)
+                        const $chk = $('<input/>', { type: 'checkbox', 'data-perm': name, 'aria-label': label });
+                        if (checked) $chk.prop('checked', true);
+                        $cwrap.append($chk).append($('<div/>').text(label));
+                        return $cwrap;
+                    }
+
+                    // Hidden fields: FunctionID for retrieval
+                    const $hiddenFn = $('<input/>', { type: 'hidden', 'data-fn-id': fnModel.FunctionID, value: fnModel.FunctionID });
+                    const $hiddenFnName = $('<input/>', { type: 'hidden', 'data-fn-name': fnModel.FunctionName || '', value: fnModel.FunctionName || '' });
+
+                    $wrap.append($hiddenFn).append($hiddenFnName);
+
+                    // Map IsGrant => IsRead expected by SaveGrantForListUser
+                    $wrap.append(makeChkData('IsGrant', fnModel.IsGrant, 'Grant'));
+                    $wrap.append(makeChkData('IsInsert', fnModel.IsInsert, 'Insert'));
+                    $wrap.append(makeChkData('IsUpdate', fnModel.IsUpdate, 'Update'));
+                    $wrap.append(makeChkData('IsDelete', fnModel.IsDelete, 'Delete'));
+
+                    // append controls to the LI
+                    $li.append($wrap);
+                });
+            }
+
+            // initial append after render
+            setTimeout(appendGrantControls, 150);
+
+            // Intercept default form submit to build ListAddGrant and ListDelGrant payloads expected by SaveGrantUser
+            $('#grantForm').off('submit').on('submit', function (e) {
+                e.preventDefault();
+
+                var $form = $(this);
+                var $btn = $('#btnSaveGrants');
+                var url = '@Url.Action("SaveGrantUser", "Admin")';
+
+                // Compose request payload
+                setTimeout(function () {
+                    var addList = [];
+                    var delList = [];
+
+                    $tree.find('[data-nodeid]').each(function () {
+                        var $li = $(this);
+                        var $wrap = $li.find('.grant-controls').first();
+                        if (!$wrap.length) return;
+
+                        var fnId = parseInt($wrap.find('input[data-fn-id]').val(), 10);
+                        if (isNaN(fnId) || fnId <= 0) return;
+
+                        var isGrant = $wrap.find('input[data-perm="IsGrant"]').is(':checked');
+                        var isInsert = $wrap.find('input[data-perm="IsInsert"]').is(':checked');
+                        var isUpdate = $wrap.find('input[data-perm="IsUpdate"]').is(':checked');
+                        var isDelete = $wrap.find('input[data-perm="IsDelete"]').is(':checked');
+
+                        if (isGrant || isInsert || isUpdate || isDelete) {
+                            addList.push({
+                                FunctionId: fnId,
+                                IsGrant: isGrant,
+                                IsInsert: isInsert,
+                                IsUpdate: isUpdate,
+                                IsDelete: isDelete
+                            });
+                        } else {
+                            delList.push({ FunctionId: fnId });
+                        }
+                    });
+
+                    // Build form-encoded param object for model binder
+                    var dataObj = {};
+                    // anti-forgery token
+                    var token = $form.find('input[name="__RequestVerificationToken"]').val();
+                    if (token) dataObj['__RequestVerificationToken'] = token;
+                    // UserID
+                    dataObj['UserID'] = targetUserId || '';
+
+                    // Add ListAddGrant entries
+                    for (var i = 0; i < addList.length; i++) {
+                        dataObj['ListAddGrant[' + i + '].FunctionId'] = addList[i].FunctionId;
+                        dataObj['ListAddGrant[' + i + '].IsGrant'] = addList[i].IsGrant;
+                        dataObj['ListAddGrant[' + i + '].IsInsert'] = addList[i].IsInsert;
+                        dataObj['ListAddGrant[' + i + '].IsUpdate'] = addList[i].IsUpdate;
+                        dataObj['ListAddGrant[' + i + '].IsDelete'] = addList[i].IsDelete;
+                    }
+
+                    // Add ListDelGrant entries
+                    for (var j = 0; j < delList.length; j++) {
+                        dataObj['ListDelGrant[' + j + '].FunctionId'] = delList[j].FunctionId;
+                    }
+
+                    $btn.prop('disabled', true).text('Đang lưu...');
+
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: dataObj, // form-encoded; model binder will bind to List<AddGrantFunction>, List<DeleteGrantFunction>, int UserID
+                        success: function (res) {
+                            if (res && res.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Thành công',
+                                    text: res.message || 'Phân quyền thành công'
+                                }).then(function () {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Lỗi',
+                                    text: (res && res.message) ? res.message : 'Lưu phân quyền thất bại'
+                                });
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Lỗi',
+                                text: 'Vui lòng thử lại sau!'
+                            });
+                        },
+                        complete: function () {
+                            $btn.prop('disabled', false).text('Lưu');
+                        }
+                    });
+                }, 50);
+            });
+        })();
+    </script>
+}

@@ -1,0 +1,107 @@
+﻿@using System
+@using CmsBase.DataAccess
+
+@model SP_Functions_GetByFunctionIDModel
+@{
+    ViewData["Title"] = (Model != null && Model.FunctionID > 0 ? "Sửa chức năng" : "Tạo chức năng");
+    ViewData["UseSweetAlert"] = true;
+}
+
+<div class="row g-6">
+    <div class="col-md-12">
+        <div class="card">
+            <h1 class="card-header cms-page-heading">@ViewData["Title"]</h1>
+            <div class="card-body">
+                <form method="post" asp-action="SaveFunction">
+                    <input type="hidden" name="function_id" value="@(Model?.FunctionID ?? 0)" />
+
+                    <div class="form-group">
+                        <label>Function Name</label>
+                        <input class="form-control" name="function_name" value="@(Model?.FunctionName ?? "")" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Action Name</label>
+                        <input class="form-control" name="action_name" value="@(Model?.ActionName ?? "")" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Url</label>
+                        <input class="form-control" name="url" value="@(Model?.Url ?? "")" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Css Icon</label>
+                        <input class="form-control" name="css_icon" value="@(Model?.CssIcon ?? "")" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Parent</label>
+                        <select class="form-control" name="ParentID">
+                            <option value="0">-- No parent --</option>
+                            @if (ViewBag.Functions is List<SP_Functions_SelectByConditionModel> fns)
+                            {
+                                foreach (var f in fns)
+                                {
+                                    <option value="@f.FunctionID" selected="@(Model?.ParentID == f.FunctionID ? "selected" : null)">@f.FunctionName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Order</label>
+                        <input class="form-control" name="Order" value="@(Model?.Order ?? 0)" />
+                    </div>
+
+                    <div class="form-group form-check" style="margin-top:15px">
+                        <input type="checkbox" class="form-check-input" id="IsDisplay" name="IsDisplay" value="1" @(Model?.IsDisplay == true ? "checked" : "") />
+                        <label class="form-check-label" for="IsDisplay">Hiển thị</label>
+                    </div>
+
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="IsActive" name="IsActive" value="1" @(Model?.IsActive == true ? "checked" : "") />
+                        <label class="form-check-label" for="IsActive">Hoạt động</label>
+                    </div>
+
+
+
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                    <a asp-action="ManagerFunction" class="btn btn-secondary">Trở lại</a>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+@section PageScripts {
+    <script>
+        function gobackListFunction() {
+            window.location.href =  appPath + "Admin/ManagerFunction";
+        }
+
+        @if (TempData["Success"] != null)
+        {
+                        <text>
+                            var msgSuccess = '@Html.Raw(TempData["Success"])';
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Thành công',
+                                text: msgSuccess
+                            }).then(function() {
+                                   gobackListFunction();
+                            });
+                        </text>
+        }
+        @if (TempData["Error"] != null)
+        {
+                        <text>
+                            var msgError = '@Html.Raw(TempData["Error"])';
+                            Swal.fire({ icon: 'error', title: 'Lỗi', text: msgError });
+                        </text>
+        }
+    </script>
+}

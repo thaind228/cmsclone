@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CMS.Utility\CMS.Utility.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.101.1" />
+    <PackageReference Include="RestSharp" Version="114.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="DataAccess\spDataAccess.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>spDataAccess.Generated.cs</LastGenOutput>
+    </None>
+    <Compile Update="DataAccess\spDataAccess.Generated.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>spDataAccess.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+</Project>

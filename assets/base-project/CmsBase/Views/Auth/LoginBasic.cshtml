@@ -1,0 +1,10 @@
+@{
+    Layout = "_BlankLayout";
+    ViewData["Title"] = "Đăng nhập";
+    ViewData["MinimalAssets"] = true;
+    var message = ViewData["SsoSetupRequired"] is true
+        ? "Cần cấu hình dịch vụ đăng nhập của tổ chức trước khi sử dụng CMS."
+        : "Bạn có thể thử kết nối lại dịch vụ đăng nhập bằng tài khoản tổ chức.";
+}
+
+<partial name="Sections/_Status" model='@(("ri-lock-line", "Đăng nhập hệ thống", message, true, "Thử đăng nhập lại"))' />

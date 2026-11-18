@@ -1,0 +1,205 @@
+﻿@model IEnumerable<CmsBase.DataAccess.SP_User_GetPageModel>
+@{
+    ViewData["Title"] = "Danh sách người dùng";
+    ViewData["UseDataTables"] = true;
+    ViewData["UseSweetAlert"] = true;
+    int stt = 1;
+}
+<section class="card cms-list-card" aria-labelledby="list-title">
+    <header class="cms-list-header">
+        <h1 class="cms-page-heading" id="list-title">@ViewData["Title"]</h1>
+        <button class="btn btn-primary" onclick="addUser()" type="submit">
+            <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Thêm mới
+        </button>
+    </header>
+
+    <div class="table-responsive text-nowrap cms-table-region" tabindex="0" role="region" aria-label="Bảng kết quả">
+        <table id="userTable" class="table">
+            <thead>
+                <tr>
+                    <th style="width:55px">STT</th>
+
+                    <th>Loại Tài Khoản</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Họ Tên</th>
+                    <th>Trạng Thái</th>
+                    <th>Người Tạo</th>
+                    <th>Chức Năng</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Không có dữ liệu</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@stt</td>
+                            <td class="align-middle">
+                                @if (item.IsAdministrator == true)
+                                {
+                                    @Html.Raw("ADMIN")
+                                }
+                                else if (item.IsAdministrator == false)
+                                {
+
+                                    @Html.Raw("USER")
+                                }
+                                else
+                                {
+
+                                    @Html.Raw("PARTNER")
+                                }
+                            </td>
+                            <td>@item.Username</td>
+                            <td>@item.Email</td>
+                            <td>@item.FullName</td>
+                            <td>
+                                @if (item.Status == 1)
+                                {
+                                    <label><i style="color:green" class="fa fa-check"></i></label>
+                                }
+                                else
+                                {
+                                    <label><i style="color:red" class="fa fa-ban"></i></label>
+                                }
+                            </td>
+                            <td>@item.CreatedUser</td>
+                            <td>
+                                @if (item.Status == 1)
+                                {
+                                    <a href="javascript:;" class="btn btn-sm btn-warning" title="Khóa" onclick="ActionUser(@item.UserID, 0)">
+                                        <i class="fa fa-lock"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <a href="javascript:;" class="btn btn-sm btn-success" title="Mở" onclick="ActionUser(@item.UserID, 1)">
+                                        <i class="fa fa-unlock"></i>
+                                    </a>
+                                }
+                                <a href="javascript:;" class="btn btn-sm btn-success" title="Phân quyền" onclick="SetGrantUser(@item.UserID)">
+                                    <i class="fa fa-cogs"></i>
+                                </a>
+                                <a asp-controller="Admin"
+                                   asp-action="UserInsertUpdate"
+                                   asp-route-userID="@item.UserID"
+                                   title="Sửa"
+                                   class="btn btn-sm btn-info"
+                                   onclick="javascript:;">
+                                    <i class="fa-solid fa-pen"></i>
+                                </a>
+                                <a href="javascript:;" class="btn btn-sm btn-danger" title="Xóa" onclick="DeleteUser(@item.UserID)">
+                                    <i class="fa-solid fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        stt++;
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@section PageScripts {
+
+    <script>
+
+
+        $(document).ready(function () {
+            adminTable = $('#userTable').DataTable({
+                pageLength: 10,
+                stateSave: false,
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
+                }
+            });
+        });
+
+        function addUser() {
+            window.location.href = '@Url.Action("UserInsertUpdate", "Admin", new { userId = 0 })';
+        }
+
+        function DeleteUser(id)  // ← thêm id vào đây
+        {
+            var msg = "Bạn có chắc muốn xóa Tài khoản này không?";
+            var key = "Xóa";
+
+
+            Swal.fire({
+                title: msg,
+                showDenyButton: true,
+                confirmButtonText: key,
+                denyButtonText: "Hủy"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteUser", "Admin")',
+                        type: 'POST',
+                        data: { userid: id },
+                        success: function(res) {
+                            if (res.success) {
+                                Swal.fire("Thành công!", res.message, "success")
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire("Lỗi!", res.message, "error");
+                            }
+                        },
+                        error: function() {
+                            Swal.fire("Lỗi!", "Vui lòng thử lại sau !", "error");
+                        }
+                    });
+                }
+            });
+        }
+
+        function SetGrantUser(id) 
+        {
+            window.location.href = '@Url.Action("GetGrantUser", "Admin")' + '?userId=' + id;
+        }
+
+        function ActionUser(id, type)  // ← thêm id vào đây
+        {
+            var msg = "Bạn có chắc muốn vô hiệu hóa này không?";
+            var key = "Chắc chắn";
+            if(type == 1)
+            {
+                msg = "Bạn có chắc muốn kích hoạt này không?";
+            }
+
+            Swal.fire({
+                title: msg,
+                showDenyButton: true,
+                confirmButtonText: key,
+                denyButtonText: "Hủy"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("ActionUser", "Admin")',
+                        type: 'POST',
+                        data: { userid: id , type: type },
+                        success: function(res) {
+                            if (res.success) {
+                                Swal.fire("Thành công!", res.message, "success")
+                                    .then(() => location.reload());
+                            } else {
+                                Swal.fire("Lỗi!", res.message, "error");
+                            }
+                        },
+                        error: function() {
+                            Swal.fire("Lỗi!", "Vui lòng thử lại sau !", "error");
+                        }
+                    });
+                }
+            });
+        }
+
+    </script>
+}

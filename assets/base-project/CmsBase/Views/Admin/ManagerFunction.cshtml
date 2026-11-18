@@ -1,0 +1,447 @@
+﻿@model IEnumerable<CMS.Utility.Model.Functions>
+@using System.Text.Json
+@using CMS.Utility
+@using CMS.Utility.Model
+
+@{
+    ViewData["Title"] = "Danh sách chức năng";
+    ViewData["UseTreeView"] = true;
+    ViewData["UseNestable"] = true;
+    ViewData["UseSweetAlert"] = true;
+    var strPer = TempData.Peek("Permission") as string;
+    UserFunction permission = JsonSerializer.Deserialize<UserFunction>(strPer);
+}
+<div class="row g-6">
+    <div class="col-md-12">
+        <div class="card">
+            <h1 class="card-header cms-page-heading">@ViewData["Title"]</h1>
+            <div class="card-body">
+                <div class="row mb-4 align-items-end">
+                    <!-- Buttons grouped together so "Sắp xếp" appears beside "Thêm mới" -->
+                    <div class="col-md-4 d-flex align-items-center gap-2">
+                        @if(permission!= null && permission.IsInsert)
+                        {
+                            <div id="addFunctionBtnWrap">
+                                <button class="btn btn-info" onclick="addFunction()" type="submit">Thêm mới</button>
+                            </div>
+                        }
+
+                        @if (permission != null && permission.IsInsert)
+                        {
+                            <div id="sortBtnWrap">
+                                <button id="btnToggleSort" class="btn btn-secondary" type="button">Sắp xếp</button>
+                            </div>
+                        }
+                        <!-- Save / Cancel replace the two buttons when in sort mode -->
+                        <div id="sortControls" class="d-none">
+                            <div class="d-flex gap-2">
+                                <button id="btnSaveOrder" class="btn btn-primary">Lưu</button>
+                                <button id="btnCancelOrder" class="btn btn-outline-secondary">Hủy</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tree-container col-12" style="margin-top:25px" aria-label="Functions tree">
+                    <div id="functionTree"></div>
+                </div>
+
+                <!-- Nestable container (hidden until sort mode) -->
+                <div id="nestableContainer" class="mt-3 col-12" style="display:none">
+                    <div class="dd" id="functionNestable"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    /* treeview existing styles */
+    .tree-container .list-group-item {
+        padding-right: 160px;
+        position: relative;
+        overflow: visible;
+        border: 1px solid #e9ecef;
+        border-radius: .25rem;
+        margin-bottom: .5rem;
+        background: #fff;
+    }
+
+    /* badge styles (visible in initial tree view) */
+    .tree-container .badge {
+        float: right;
+        margin-left: 0.5rem;
+        margin-top: 2px;
+    }
+    .tree-container .badge-active {
+        background-color: #198754 !important;
+        color: #fff !important;
+    }
+    .tree-container .badge-inactive {
+        background-color: #6c757d !important;
+        color: #fff !important;
+    }
+    .tree-container .badge-displayed {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+    }
+    .tree-container .badge-hidden {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+
+    /* icon action buttons on the right */
+    .tree-container .action-btn {
+        position: absolute;
+        top: 8px;
+        z-index: 2;
+        padding: 0.25rem 0.4rem;
+        font-size: 0.85rem;
+        line-height: 1;
+        border-radius: 0.35rem;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(0,0,0,0.06);
+        cursor: pointer;
+        width: 34px;
+        height: 30px;
+    }
+    .tree-container .action-btn i { pointer-events: none; }
+
+    .tree-container .edit-btn {
+        right: 48px;
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .tree-container .delete-btn {
+        right: 8px;
+        background-color: #dc3545;
+        color: #fff;
+    }
+
+    /* --- Nestable: table-like bordered rows for nicer appearance --- */
+    .dd { background: transparent; }
+    .dd-list { margin: 0; padding: 0; list-style: none; }
+    .dd-item { margin: 0 0 6px 0; }
+    .dd-handle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .55rem .75rem;
+        border: 1px solid #dee2e6;
+        background: #ffffff;
+        border-radius: .25rem;
+        cursor: move;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+        transition: box-shadow .12s ease, transform .08s ease;
+    }
+    .dd-handle .fn-name { font-weight: 600; color: #212529; }
+    .dd-handle .fn-meta { color: #6c757d; font-size: .875rem; }
+
+    /* nested indentation: child functions indented slightly more for clarity */
+    .dd-list .dd-list { margin-left: 22px; border-left: 2px solid #f1f3f5; padding-left: 14px; }
+    .dd-list .dd-list > .dd-item > .dd-handle { padding-left: 1.1rem; }
+
+    /* Dragging: keep dragged element visible and elevated */
+    .dd-dragel {
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15) !important;
+        opacity: 0.98 !important;
+        z-index: 9999 !important;
+        transform: translateZ(0);
+        width: auto !important;
+    }
+
+    /* Placeholder appearance */
+    .dd-placeholder {
+        background: rgba(0,0,0,0.03);
+        border: 1px dashed #ced4da;
+        min-height: 42px;
+        margin-bottom: 6px;
+        border-radius: .25rem;
+    }
+
+    /* subtle hover while dragging over target */
+    .dd-hover > .dd-handle {
+        box-shadow: inset 0 0 0 1px rgba(13,110,253,0.06);
+        background: #fbfdff;
+    }
+</style>
+
+@section PageScripts {
+    <script>
+        function addFunction() {
+            window.location.href = '@Url.Action("FunctionInsertUpdate", "Admin", new { functionId = 0 })';
+        }
+
+        if (typeof jQuery === 'undefined') {
+            console.error('jQuery not found. Ensure vendor/libs/jquery/jquery.js is loaded (check Sections/_Scripts and layout).');
+        } else {
+            // Serialize model into JS object
+            const functions = @Html.Raw(JsonSerializer.Serialize(Model ?? Enumerable.Empty<CMS.Utility.Model.Functions>()));
+
+            // Map functions into nodes compatible with bootstrap-treeview (include tags for initial view)
+            const nodeMap = new Map();
+            functions.forEach(f => {
+                const tags = [];
+                tags.push(f.IsActive ? 'Active' : 'Inactive');
+                tags.push(f.IsDisplay ? 'Displayed' : 'Hidden');
+
+                nodeMap.set(f.FunctionID, {
+                    nodeId: f.FunctionID,
+                    id: f.FunctionID,
+                    parentId: (f.ParentID === undefined || f.ParentID === null) ? 0 : f.ParentID,
+                    text: f.FunctionName ?? '',
+                    href: '#',
+                    tags: tags,
+                    order: f.Order ?? 0,
+                    nodes: []
+                });
+            });
+
+            // Build tree
+            const roots = [];
+            nodeMap.forEach(n => {
+                if (!n.parentId || n.parentId === 0 || !nodeMap.has(n.parentId)) {
+                    roots.push(n);
+                } else {
+                    nodeMap.get(n.parentId).nodes.push(n);
+                }
+            });
+
+            function sortNodes(arr) {
+                arr.sort((a, b) => {
+                    if ((a.order ?? 0) !== (b.order ?? 0)) return (a.order ?? 0) - (b.order ?? 0);
+                    return (a.text ?? '').localeCompare(b.text ?? '');
+                });
+                arr.forEach(n => { if (n.nodes && n.nodes.length) sortNodes(n.nodes); });
+            }
+            sortNodes(roots);
+
+            // Initialize bootstrap-treeview showing tags (initial view)
+            const $tree = $('#functionTree');
+            $tree.treeview({
+                data: roots,
+                showTags: true,
+                showIcon: false,         // keep no leading icons
+                levels: 99,
+                highlightSelected: false,
+                selectable: false,
+                onNodeCollapsed: function (event, node) { styleBadges(); styleListItems(); setTimeout(appendActionButtons, 0); },
+                onNodeExpanded: function (event, node) { styleBadges(); styleListItems(); setTimeout(appendActionButtons, 0); },
+                onNodeSelected: function (event, node) { styleBadges(); styleListItems(); setTimeout(appendActionButtons, 0); }
+            });
+
+            try { $tree.treeview('expandAll'); } catch (e) { }
+
+            // ensure clicks on action buttons don't toggle the tree
+            $tree.on('click', '.list-group-item', function (e) {
+                if ($(e.target).closest('.action-btn').length) {
+                    e.stopImmediatePropagation();
+                    return;
+                }
+                setTimeout(function () { styleBadges(); styleListItems(); appendActionButtons(); }, 0);
+            });
+
+            // style badges in the tree (apply project badge classes)
+            function styleBadges() {
+                $tree.find('.badge').each(function () {
+                    const $b = $(this);
+                    const txt = ($b.text() || '').trim().toLowerCase();
+                    $b.removeClass('badge-active badge-inactive badge-displayed badge-hidden');
+                    if (txt === 'active') {
+                        $b.addClass('badge-active');
+                    } else if (txt === 'inactive') {
+                        $b.addClass('badge-inactive');
+                    } else if (txt === 'displayed') {
+                        $b.addClass('badge-displayed');
+                    } else if (txt === 'hidden') {
+                        $b.addClass('badge-hidden');
+                    }
+                });
+            }
+
+            // minimal styling for tree list items (keeps borders and spacing)
+            function styleListItems() {
+                $tree.find('.list-group-item').each(function () {
+                    $(this).css({ 'background': '#fff' });
+                });
+            }
+
+            // Append icon action buttons (Edit/Delete) only on node items.
+            function appendActionButtons() {
+                $tree.find('[data-nodeid]').each(function () {
+                    const $li = $(this);
+
+                    // Only operate on actual node list items rendered by bootstrap-treeview.
+                    if (!$li.hasClass('list-group-item') && $li.prop('tagName').toLowerCase() !== 'li') {
+                        return;
+                    }
+
+                    const treeNodeId = $li.data('nodeid');
+
+                    // get node object to retrieve original function id (node.id)
+                    let nodeObj = null;
+                    try { nodeObj = $tree.treeview('getNode', treeNodeId); } catch (e) { nodeObj = null; }
+                    const fnId = (nodeObj && (nodeObj.id !== undefined && nodeObj.id !== null)) ? nodeObj.id : treeNodeId;
+
+                    // Append edit/delete only to actual node items and avoid duplicates.
+                    if ($li.find('.edit-btn').length === 0) {
+                        const $edit = $('<button/>', {
+                            type: 'button',
+                            class: 'action-btn edit-btn',
+                            'data-id': fnId,
+                            'aria-label': 'Edit'
+                        }).html('<i class="fa fa-edit"></i>');
+                        $li.append($edit);
+                    }
+
+                    if ($li.find('.delete-btn').length === 0) {
+                        const $del = $('<button/>', {
+                            type: 'button',
+                            class: 'action-btn delete-btn',
+                            'data-id': fnId,
+                            'aria-label': 'Delete'
+                        }).html('<i class="fa fa-trash"></i>');
+                        $li.append($del);
+                    }
+                });
+            }
+
+            // Edit handler
+            $tree.on('click', '.edit-btn', function (e) {
+                e.stopPropagation();
+                const id = $(this).data('id');
+                if (id === undefined || id === null) return;
+                const editUrl = '@Url.Action("FunctionInsertUpdate", "Admin")';
+                window.location.href = editUrl + '?functionId=' + encodeURIComponent(id);
+            });
+
+            // Delete handler
+            $tree.on('click', '.delete-btn', function (e) {
+                e.stopPropagation();
+                const id = $(this).data('id');
+                if (id === undefined || id === null) return;
+                Swal.fire({
+                    title: "Bạn có chắc muốn xóa chức năng này không?",
+                    showDenyButton: true,
+                    confirmButtonText: "Xóa",
+                    denyButtonText: "Hủy"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteFunction", "Admin")',
+                            type: 'POST',
+                            data: { functionId: id },
+                            success: function (res) {
+                                if (res.success) {
+                                    Swal.fire("Thành công!", res.message, "success").then(() => location.reload());
+                                } else {
+                                    Swal.fire("Lỗi!", res.message || "Xóa không thành công", "error");
+                                }
+                            },
+                            error: function () {
+                                Swal.fire("Lỗi!", "Vui lòng thử lại sau !", "error");
+                            }
+                        });
+                    }
+                });
+            });
+
+            // initial UI
+            styleBadges();
+            styleListItems();
+            appendActionButtons();
+
+            // --- Nestable sort mode (collapse toggles removed when entering sort mode) ---
+            function buildNestableHtml(nodes) {
+                if (!nodes || !nodes.length) return '';
+                let html = '<ol class="dd-list">';
+                nodes.forEach(n => {
+                    const safeText = $('<div>').text(n.text || '').html();
+                    html += '<li class="dd-item" data-id="' + (n.id ?? n.nodeId ?? 0) + '">';
+                    html += '<div class="dd-handle"><span class="fn-name">' + safeText + '</span><span class="fn-meta">ID: ' + (n.id ?? n.nodeId ?? 0) + '</span></div>';
+                    if (n.nodes && n.nodes.length) { html += buildNestableHtml(n.nodes); }
+                    html += '</li>';
+                });
+                html += '</ol>';
+                return html;
+            }
+
+            function flattenSerialized(items, parentId, out) {
+                items.forEach((it, index) => {
+                    out.push({ id: it.id, parentId: parentId || 0, order: index });
+                    if (it.children && it.children.length) flattenSerialized(it.children, it.id, out);
+                });
+            }
+
+            $('#btnToggleSort').on('click', function () {
+                const $treeContainer = $('.tree-container');
+                const $nestableContainer = $('#nestableContainer');
+                const isSorting = $nestableContainer.is(':visible');
+                if (isSorting) {
+                    // exit sort mode (restore UI)
+                    $nestableContainer.hide();
+                    $treeContainer.show();
+                    $('#sortControls').addClass('d-none');
+                    $('#addFunctionBtnWrap').show();
+                    $('#sortBtnWrap').show();
+                    setTimeout(function () { styleBadges(); appendActionButtons(); }, 50);
+                } else {
+                    // enter sort mode: build nestable WITHOUT any collapse toggles
+                    const nestHtml = buildNestableHtml(roots);
+                    $('#functionNestable').html(nestHtml);
+                    try {
+                        $('#functionNestable').nestable({ maxDepth: 10 });
+                    } catch (e) {
+                        console.error('nestable plugin not available', e);
+                    }
+
+                    // show nestable, hide tree and swap buttons
+                    $treeContainer.hide();
+                    $nestableContainer.show();
+                    $('#sortControls').removeClass('d-none');
+                    $('#addFunctionBtnWrap').hide();
+                    $('#sortBtnWrap').hide();
+                }
+            });
+
+            $('#btnCancelOrder').on('click', function () {
+                $('#nestableContainer').hide();
+                $('.tree-container').show();
+                $('#sortControls').addClass('d-none');
+                $('#addFunctionBtnWrap').show();
+                $('#sortBtnWrap').show();
+                setTimeout(function () { styleBadges(); appendActionButtons(); }, 50);
+            });
+
+            $('#btnSaveOrder').on('click', function () {
+                let serialized = [];
+                try { serialized = $('#functionNestable').nestable('serialize') || []; } catch (e) {
+                    Swal.fire("Lỗi!", "Không thể đọc thứ tự. Vui lòng thử lại.", "error"); return;
+                }
+                const payload = [];
+                flattenSerialized(serialized, 0, payload);
+
+                $.ajax({
+                    url: '@Url.Action("UpdateFunctionOrder", "Admin")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res && res.success) {
+                            Swal.fire("Thành công", res.message || "Cập nhật thứ tự thành công", "success")
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire("Lỗi", res && res.message ? res.message : "Cập nhật không thành công", "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Lỗi", "Không thể cập nhật thứ tự. Vui lòng thử lại.", "error");
+                    }
+                });
+            });
+            // --- end nestable ---
+        }
+    </script>
+}

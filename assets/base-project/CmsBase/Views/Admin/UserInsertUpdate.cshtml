@@ -1,0 +1,173 @@
+﻿@using System
+@using CmsBase.DataAccess
+@model SP_User_GetByConditionModel
+@{
+    ViewData["Title"] = ViewBag.IsCreate == 0 ? "Thêm mới tài khoản" : "Cập nhật tài khoản";
+    ViewData["UseSweetAlert"] = true;
+    var lstRole = ViewBag.ListRole as List<SP_Role_GetAllModel>;
+}
+@if (ViewBag.IsCreate == 0)
+{
+    <form id="userForm" asp-controller="Admin" asp-action="SaveUser" method="post">
+        <input type="hidden" id="user_id" name="user_id" value="0" />
+        <div class="row g-6">
+            <div class="col-md-12">
+                <div class="card">
+                    <h1 class="card-header cms-page-heading">@ViewData["Title"]</h1>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="user_name" class="form-label">Username <span class="required">*</span></label>
+                            <input id="user_name" name="user_name" class="form-control" type="text" placeholder="Nhập tên tài khoản" maxlength="30" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Họ và tên <span class="required">*</span></label>
+                            <input id="full_name" name="full_name" class="form-control" type="text" placeholder="Nhập họ và tên" maxlength="30" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="required">*</span></label>
+                            <input id="email" name="email" class="form-control" type="email" placeholder="Nhập email" maxlength="50" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mật khẩu <span class="required">*</span></label>
+                            <input id="password" name="password" class="form-control" type="password" placeholder="Nhập mật khẩu" maxlength="50" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Xác nhận mật khẩu <span class="required">*</span></label>
+                            <input id="confirm_password" name="confirm_password" class="form-control" type="password" placeholder="Nhập lại mật khẩu" maxlength="50" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Status" class="form-label">Trạng thái</label>
+                            <select id="Status" name="Status" class="form-select">
+                                <option value="0">Inactive</option>
+                                <option value="1">Active</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="Role" class="form-label">Role</label>
+                            <select id="Role" name="Role" class="form-select">
+                                @if(lstRole != null)
+                                {
+                                    foreach(var role in lstRole)
+                                    {
+                                        <option value="@role.RoleID">@role.RoleName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <button class="btn btn-primary" type="submit">Tạo mới</button>
+                            <button type="button" onclick="gobackListUser()" class="btn btn-light">Trở về</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+else
+{
+    <form id="userForm" asp-controller="Admin" asp-action="SaveUser" method="post">
+        <input type="hidden" id="user_id" name="user_id" value="@ViewBag.IsCreate" />
+        <div class="row g-6">
+            <div class="col-md-12">
+                <div class="card">
+                    <h1 class="card-header cms-page-heading">@ViewData["Title"]</h1>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label for="user_name" class="form-label">Username <span class="required">*</span></label>
+                            <input id="user_name" name="user_name" class="form-control" type="text" placeholder="Nhập tên tài khoản" maxlength="30" value="@Model.Username" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Họ và tên <span class="required">*</span></label>
+                            <input id="full_name" name="full_name" class="form-control" type="text" placeholder="Nhập họ và tên" maxlength="30" value="@Model.FullName" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="required">*</span></label>
+                            <input id="email" name="email" class="form-control" type="email" placeholder="Nhập email" maxlength="50" value="@Model.Email" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mật khẩu <span class="required">*</span></label>
+                            <input id="password" name="password" class="form-control" type="password" placeholder="Nhập mật khẩu" maxlength="50" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Xác nhận mật khẩu <span class="required">*</span></label>
+                            <input id="confirm_password" name="confirm_password" class="form-control" type="password" placeholder="Nhập lại mật khẩu" maxlength="50" />
+                        </div>
+                        <div class="mb-3" style="width:fit-content">
+                            <label for="Status" class="form-label">Trạng thái</label>
+                            <select id="Status" name="Status" class="form-select">
+                                @{
+                                    var statusOptions = new[] {
+                                                        new { Value = 0, Text = "Inactive" },
+                                                        new { Value = 1, Text = "Active" }
+                                                        };
+                                    foreach (var opt in statusOptions)
+                                    {
+                                        <option value="@opt.Value" selected="@(Model.Status == opt.Value ? "selected" : null)">@opt.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3" style="width:fit-content">
+                            <label for="Role" class="form-label">Role</label>
+                            <select id="Role" name="Role" class="form-select">
+                                @if (lstRole != null)
+                                {
+                                    foreach (var role in lstRole)
+                                    {
+                                        <option selected="@(Model.RoleID == role.RoleID ? "selected" : null)" value="@role.RoleID">@role.RoleName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <button class="btn btn-primary" type="submit">Lưu</button>
+                            <button type="button" onclick="gobackListUser()" class="btn btn-light">Trở về</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+}
+
+@section PageScripts {
+    <script>
+        function gobackListUser() {
+            window.location.href =  appPath + "Admin/ManagerUser";
+        }
+
+        @if (TempData["Success"] != null)
+        {
+                    <text>
+                        var msgSuccess = '@Html.Raw(TempData["Success"])';
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Thành công',
+                            text: msgSuccess
+                        }).then(function() {
+                           gobackListUser(); 
+                        });
+                    </text>
+        }
+        @if (TempData["Error"] != null)
+        {
+                    <text>
+                        var msgError = '@Html.Raw(TempData["Error"])';
+                        Swal.fire({ icon: 'error', title: 'Lỗi', text: msgError });
+                    </text>
+        }
+    </script>
+}

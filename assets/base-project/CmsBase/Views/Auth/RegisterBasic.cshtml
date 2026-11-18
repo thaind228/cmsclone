@@ -1,0 +1,8 @@
+@{
+    Layout = "_BlankLayout";
+    ViewData["Title"] = "Đăng ký tài khoản";
+    ViewData["MinimalAssets"] = true;
+    var message = "Liên hệ quản trị viên để được cấp quyền truy cập bằng tài khoản tổ chức.";
+}
+
+<partial name="Sections/_Status" model='@(("ri-user-3-line", "Đăng ký tài khoản", message, true, "Về trang đăng nhập"))' />

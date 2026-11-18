@@ -1,0 +1,20 @@
+@model (string Icon, string Title, string Message, bool IsAuthentication, string ActionLabel)
+<main class="cms-status">
+    <partial name="Sections/_ThemeToggle" />
+    <div class="cms-status-card">
+        <partial name="Sections/_Brand" />
+        <span class="cms-feature-icon cms-status-icon"><i class="ri @Model.Icon" aria-hidden="true"></i></span>
+        <h1>@Model.Title</h1>
+        <p>@Model.Message</p>
+        @if (Model.IsAuthentication)
+        {
+            <a class="btn btn-primary" asp-controller="Auth" asp-action="LoginBasic">@Model.ActionLabel</a>
+        }
+        else
+        {
+            <a class="btn btn-primary" asp-controller="Home" asp-action="Index">
+                <i class="ri ri-arrow-left-line" aria-hidden="true"></i> @Model.ActionLabel
+            </a>
+        }
+    </div>
+</main>

@@ -1,0 +1,5 @@
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    Layout = "_ContentNavbarLayout";
+    ViewData["CmsBrand"] = Configuration["Cms:Name"] ?? "CMS quản trị";
+}

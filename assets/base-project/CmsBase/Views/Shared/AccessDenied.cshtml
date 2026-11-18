@@ -1,0 +1,9 @@
+@{
+    Layout = "_BlankLayout";
+    ViewData["Title"] = "Không có quyền truy cập";
+    ViewData["MinimalAssets"] = true;
+    var message = ViewBag.Message as string
+        ?? "Tài khoản của bạn chưa được cấp quyền cho chức năng này. Vui lòng liên hệ quản trị viên.";
+}
+
+<partial name="Sections/_Status" model='@(("ri-lock-line", "Không có quyền truy cập", message, false, "Về trang tổng quan"))' />

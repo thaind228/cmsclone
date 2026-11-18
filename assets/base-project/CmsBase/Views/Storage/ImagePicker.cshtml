@@ -1,0 +1,643 @@
+﻿@{
+    Layout = "_BlankLayout";
+    ViewData["Title"] = "Chọn ảnh CDN";
+}
+
+<style>
+    .picker-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 15px;
+    }
+
+    .search-box {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    #imageContainer {
+        height: clamp(12rem, calc(100dvh - 11rem), 42rem);
+        overflow-y: auto;
+        align-content: flex-start;
+    }
+
+    .folder-item,
+    .image-item {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 16px;
+        border: 1px solid var(--cms-line);
+        border-radius: .75rem;
+        background: var(--cms-surface);
+        cursor: pointer;
+        transition: .2s;
+        overflow: hidden;
+    }
+
+    .folder-item {
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .folder-item:hover,
+        .image-item:hover {
+            border-color: var(--cms-accent);
+            box-shadow: var(--cms-shadow);
+        }
+
+    .folder-icon {
+        font-size: 60px;
+        color: #f0b429;
+        margin-bottom: 12px;
+    }
+
+    .folder-name {
+        font-weight: 600;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .image-item img,
+    .file-preview {
+        width: 100%;
+        height: 130px;
+        object-fit: contain;
+        border-radius: 4px;
+        background: var(--cms-subtle);
+    }
+
+    .file-preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filename {
+        margin-top: 7px;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .selected {
+        border-color: var(--cms-accent);
+        box-shadow: inset 0 0 0 1px var(--cms-accent);
+        background: var(--cms-accent-soft);
+    }
+
+    #breadcrumb {
+        margin: 12px 0;
+        overflow-wrap: anywhere;
+    }
+
+        #breadcrumb a {
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+    #uploadLoading {
+        display: none;
+    }
+
+    .image-actions {
+        margin-top: 8px;
+    }
+
+    .folder-actions {
+        margin-top: 12px;
+    }
+</style>
+
+<main class="cms-image-picker">
+
+    <div class="picker-toolbar">
+        <input id="txtSearchImage" aria-label="Tìm trong thư mục hiện tại" type="search"
+               class="form-control search-box"
+               placeholder="Tìm kiếm ảnh trong thư mục hiện tại..." />
+
+        <button type="button"
+                id="btnCreateFolder"
+                class="btn btn-success">
+            <i class="fa fa-folder-plus"></i>
+            Tạo thư mục
+        </button>
+
+        <button type="button"
+                id="btnUpload"
+                class="btn btn-primary">
+            <i class="fa fa-upload"></i>
+            Tải tệp lên
+        </button>
+
+        <input type="file"
+               id="fileUpload"
+               multiple
+               accept="image/*,video/mp4,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.apk"
+               style="display:none" />
+    </div>
+
+    <div id="uploadLoading" class="alert alert-info">
+        <span id="uploadText">Đang tải file lên, vui lòng chờ...</span>
+    </div>
+
+    <div class="mb-3">
+        <label for="txtSelected" class="form-label">Ảnh đã chọn</label>
+        <input id="txtSelected"
+               class="form-control"
+               readonly
+               placeholder="Chọn ảnh để lấy URL CDN..." />
+    </div>
+
+    <div id="breadcrumb"></div>
+
+    <hr />
+
+    <div id="imageContainer" class="row"></div>
+
+    <div id="loading"
+         style="display:none;text-align:center;padding:20px;">
+        Đang tải dữ liệu...
+    </div>
+
+</main>
+
+@section PageScripts {
+    <script>
+        let selectedUrl = "";
+        let selectedKey = "";
+
+        // Prefix tương đối với Storage:Folder.
+        // "" tương ứng thư mục gốc CCCT/CMS.
+        let currentPrefix = "";
+
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMore = true;
+        let keyword = "";
+        let searchTimer = null;
+
+        $(function () {
+            renderBreadcrumb();
+            loadImages(true);
+
+            // Cuộn xuống cuối để tải trang tiếp theo.
+            $("#imageContainer").on("scroll", function () {
+                const div = $(this);
+
+                if (div.scrollTop() + div.innerHeight()
+                    >= div[0].scrollHeight - 100) {
+                    loadImages(false);
+                }
+            });
+
+            // Tìm kiếm ảnh trong thư mục hiện tại.
+            $("#txtSearchImage").on("input", function () {
+                clearTimeout(searchTimer);
+
+                const value = $(this).val().trim();
+
+                searchTimer = setTimeout(function () {
+                    keyword = value;
+                    loadImages(true);
+                }, 300);
+            });
+
+            // Tạo thư mục.
+            $("#btnCreateFolder").on("click", function () {
+                const folderName = prompt("Nhập tên thư mục mới:");
+
+                if (folderName === null)
+                    return;
+
+                const name = folderName.trim();
+
+                if (!name) {
+                    alert("Vui lòng nhập tên thư mục.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("CreateFolder", "Storage")',
+                    type: "POST",
+                    data: {
+                        folderName: name,
+                        prefix: currentPrefix
+                    },
+                    success: function (res) {
+                        if (!res || !res.success) {
+                            alert(res && res.message
+                                ? res.message
+                                : "Tạo thư mục thất bại.");
+                            return;
+                        }
+
+                        alert(res.message || "Tạo thư mục thành công.");
+                        loadImages(true);
+                    },
+                    error: function (xhr) {
+                        alert("Không thể tạo thư mục. HTTP "
+                            + xhr.status);
+                    }
+                });
+            });
+
+            // Mở hộp chọn file.
+            $("#btnUpload").on("click", function () {
+                $("#fileUpload").click();
+            });
+
+            // Upload vào thư mục hiện tại.
+            $("#fileUpload").on("change", function () {
+                if (!this.files || this.files.length === 0)
+                    return;
+
+                const formData = new FormData();
+
+                for (let i = 0; i < this.files.length; i++) {
+                    formData.append("files", this.files[i]);
+                }
+
+                formData.append("prefix", currentPrefix);
+
+                $("#btnUpload").prop("disabled", true);
+                $("#btnCreateFolder").prop("disabled", true);
+
+                $("#uploadText").text(
+                    "Đang tải lên " + this.files.length
+                    + " file, vui lòng chờ..."
+                );
+
+                $("#uploadLoading").show();
+
+                $.ajax({
+                    url: '@Url.Action("Upload", "Storage")',
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+
+                    success: function (res) {
+                        if (res && res.success) {
+                            loadImages(true);
+                            alert("Upload thành công.");
+                        } else {
+                            alert(res && res.message
+                                ? res.message
+                                : "Upload thất bại.");
+                        }
+                    },
+
+                    error: function (xhr) {
+                        alert("Upload thất bại. HTTP "
+                            + xhr.status);
+                    },
+
+                    complete: function () {
+                        $("#btnUpload").prop("disabled", false);
+                        $("#btnCreateFolder").prop("disabled", false);
+                        $("#uploadLoading").hide();
+                        $("#fileUpload").val("");
+                    }
+                });
+            });
+
+            // Mở thư mục con.
+            $(document).on("click", ".folder-item", function () {
+                const folderName = $(this).attr("data-folder");
+
+                if (!folderName)
+                    return;
+
+                currentPrefix += folderName + "/";
+
+                keyword = "";
+                $("#txtSearchImage").val("");
+
+                renderBreadcrumb();
+                loadImages(true);
+            });
+
+            // Đi đến thư mục được chọn trên breadcrumb.
+            $(document).on("click", ".breadcrumb-link", function (e) {
+                e.preventDefault();
+
+                currentPrefix = $(this).attr("data-prefix") || "";
+
+                keyword = "";
+                $("#txtSearchImage").val("");
+
+                renderBreadcrumb();
+                loadImages(true);
+            });
+
+            // Chọn ảnh.
+            $(document).on("click", ".image-item", function (e) {
+                if ($(e.target).closest(".btnDeleteImage").length)
+                    return;
+
+                $(".image-item").removeClass("selected");
+                $(this).addClass("selected");
+
+                selectedUrl = $(this).attr("data-url");
+                selectedKey = $(this).attr("data-key");
+
+                $("#txtSelected").val(selectedUrl);
+
+                // Giữ nguyên callback hiện tại của hệ thống.
+                if (window.parent.imagePickerType === "ckeditor") {
+                    window.parent.setCKEditorImage(selectedUrl);
+                } else if (window.parent.imagePickerType === "event") {
+                    window.parent.setImagePicker(selectedUrl);
+                }
+            });
+
+            // Xóa ảnh.
+            $(document).on("click", ".btnDeleteImage", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const key = $(this).attr("data-key");
+
+                if (!key)
+                    return;
+
+                if (!confirm("Bạn có chắc muốn xóa ảnh này?"))
+                    return;
+
+                $.ajax({
+                    url: '@Url.Action("Delete", "Storage")',
+                    type: "POST",
+                    data: { key: key },
+
+                    success: function (res) {
+                        if (res && res.success) {
+                            if (selectedKey === key) {
+                                selectedKey = "";
+                                selectedUrl = "";
+                                $("#txtSelected").val("");
+                            }
+
+                            loadImages(true);
+                        } else {
+                            alert(res && res.message
+                                ? res.message
+                                : "Xóa ảnh thất bại.");
+                        }
+                    },
+
+                    error: function (xhr) {
+                        alert("Xóa ảnh thất bại. HTTP "
+                            + xhr.status);
+                    }
+                });
+            });
+
+
+              $(document).on("click", ".btnDeleteFolder", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const folderName = $(this).attr("data-folder");
+            const parentPrefix = currentPrefix;
+
+            if (!folderName)
+                return;
+
+            if (!confirm(
+                'Bạn có chắc muốn xóa thư mục "' + folderName +
+                '" và TOÀN BỘ ảnh, file bên trong, kể cả thư mục con?\n\n' +
+                'Dữ liệu đã xóa không thể khôi phục.'
+            )) {
+                return;
+            }
+
+            const $button = $(this);
+            $button.prop("disabled", true);
+
+            $.ajax({
+                url: '@Url.Action("DeleteFolder", "Storage")',
+                type: "POST",
+                data: {
+                    folderName: folderName,
+                    prefix: parentPrefix
+                },
+
+                success: function (res) {
+                    if (res && res.success) {
+                        alert(res.message || "Xóa thư mục thành công.");
+
+                        // Chỉ tải lại nếu người dùng vẫn ở thư mục cha đó.
+                        if (currentPrefix === parentPrefix) {
+                            loadImages(true);
+                        }
+                    } else {
+                        alert(res && res.message
+                            ? res.message
+                            : "Xóa thư mục thất bại.");
+                    }
+                },
+
+                error: function (xhr) {
+                    alert("Xóa thư mục thất bại. HTTP " + xhr.status);
+                },
+
+                complete: function () {
+                    $button.prop("disabled", false);
+                }
+            });
+        });
+
+        });
+
+        // Mã hóa nội dung trước khi đưa vào HTML.
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, function (ch) {
+                return {
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#39;"
+                }[ch];
+            });
+        }
+
+        // Hiển thị đường dẫn thư mục.
+        function renderBreadcrumb() {
+            const parts = currentPrefix
+                .split("/")
+                .filter(function (x) {
+                    return x.length > 0;
+                });
+
+            let html = '<nav aria-label="breadcrumb"><ol class="breadcrumb">'
+                + '<li class="breadcrumb-item">'
+                + '<a href="#" class="breadcrumb-link" data-prefix="">'
+                + 'Thư mục gốc</a></li>';
+
+            let path = "";
+
+            parts.forEach(function (part, index) {
+                path += part + "/";
+
+                if (index === parts.length - 1) {
+                    html += '<li class="breadcrumb-item active">'
+                        + escapeHtml(part)
+                        + '</li>';
+                } else {
+                    html += '<li class="breadcrumb-item">'
+                        + '<a href="#" class="breadcrumb-link" data-prefix="'
+                        + escapeHtml(path) + '">'
+                        + escapeHtml(part) + '</a></li>';
+                }
+            });
+
+            html += "</ol></nav>";
+
+            $("#breadcrumb").html(html);
+        }
+
+        // Tải thư mục và ảnh theo trang.
+        function loadImages(reset) {
+            if (reset) {
+                currentPage = 1;
+                hasMore = true;
+                isLoading = false;
+                $("#imageContainer").empty();
+            }
+
+            if (isLoading || !hasMore)
+                return;
+
+            isLoading = true;
+            $("#loading").show();
+
+            $.ajax({
+                url: '@Url.Action("GetFiles", "Storage")',
+                type: "GET",
+                data: {
+                    prefix: currentPrefix,
+                    page: currentPage,
+                    keyword: keyword
+                },
+
+                success: function (res) {
+                    if (!res || !res.success) {
+                        alert(res && res.message
+                            ? res.message
+                            : "Không thể tải danh sách file.");
+                        return;
+                    }
+
+                    // Chỉ render thư mục ở trang đầu và khi không tìm kiếm.
+                    if (currentPage === 1 && !keyword) {
+                        renderFolders(res.folders || []);
+                    }
+
+                    renderImages(res.files || []);
+
+                    hasMore = res.hasMore === true;
+
+                    if (hasMore)
+                        currentPage++;
+                },
+
+                error: function (xhr) {
+                    console.error("GetFiles error:", xhr);
+                    alert("Không thể tải danh sách file. HTTP "
+                        + xhr.status);
+                },
+
+                complete: function () {
+                    isLoading = false;
+                    $("#loading").hide();
+                }
+            });
+        }
+
+        // Hiển thị các thư mục con.
+
+        function renderFolders(folders) {
+            let html = "";
+
+            folders.forEach(function (folder) {
+                const safeFolder = escapeHtml(folder);
+
+                html += `
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                        <div class="folder-item"
+                             data-folder="${safeFolder}">
+                            <i class="fa fa-folder folder-icon"></i>
+
+                            <div class="folder-name">${safeFolder}</div>
+
+                            <div class="folder-actions">
+                                <button type="button"
+                                        class="btn btn-danger btn-sm btnDeleteFolder"
+                                        data-folder="${safeFolder}">
+                                    <i class="fa fa-trash"></i> Xóa thư mục
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            $("#imageContainer").append(html);
+        }
+
+
+        // Hiển thị ảnh và các file khác.
+        function renderImages(files) {
+            let html = "";
+
+            files.forEach(function (item) {
+                const key = escapeHtml(item.key);
+                const url = escapeHtml(item.url);
+                const fileName = item.key.split("/").pop();
+                const safeFileName = escapeHtml(fileName);
+
+                const isImage =
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
+
+                const preview = isImage
+                    ? `<img loading="lazy"
+                            src="${url}"
+                            alt="${safeFileName}" />`
+                    : `<div class="file-preview">
+                           <i class="fa fa-file"
+                              style="font-size:45px;color:#777"></i>
+                       </div>`;
+
+                html += `
+                    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                        <div class="image-item"
+                             data-url="${url}"
+                             data-key="${key}">
+                            ${preview}
+
+                            <div class="filename" title="${key}">
+                                ${safeFileName}
+                            </div>
+
+                            <div class="image-actions">
+                                <button type="button"
+                                        class="btn btn-danger btn-sm btnDeleteImage"
+                                        data-key="${key}">
+                                    <i class="fa fa-trash"></i> Xóa
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            $("#imageContainer").append(html);
+        }
+
+
+      
+    </script>
+}

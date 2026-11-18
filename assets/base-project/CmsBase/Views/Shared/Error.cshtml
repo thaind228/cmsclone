@@ -1,0 +1,15 @@
+@model ErrorViewModel
+@{
+    Layout = "_BlankLayout";
+    ViewData["MinimalAssets"] = true;
+    var statusCode = ViewBag.StatusCode as int?;
+    var (title, message) = statusCode switch
+    {
+        404 => ("Không tìm thấy trang", "Kiểm tra lại đường dẫn hoặc quay về trang tổng quan."),
+        403 => ("Không có quyền truy cập", "Liên hệ quản trị viên để được hỗ trợ cấp quyền."),
+        _ => ("Hệ thống gặp lỗi", "Vui lòng thử lại hoặc liên hệ quản trị viên để được hỗ trợ.")
+    };
+    ViewData["Title"] = title;
+}
+
+<partial name="Sections/_Status" model='@(("ri-error-warning-line", title, message, false, "Về trang tổng quan"))' />

@@ -1,0 +1,56 @@
+@using CMS.Utility
+@{
+    var user = SessionHelper.GetUser(Context.Session);
+    var name = string.IsNullOrWhiteSpace(user?.Name) ? "Tài khoản" : user.Name.Trim();
+    var title = ViewData["Title"] as string ?? "Quản trị";
+    var isHome = ViewContext.RouteData.Values["controller"]?.ToString() == "Home"
+        && ViewContext.RouteData.Values["action"]?.ToString() == "Index";
+}
+
+<header class="cms-topbar">
+    <div class="cms-topbar-inner">
+        <button type="button" class="cms-icon-button d-xl-none" data-bs-toggle="offcanvas"
+                data-bs-target="#cms-menu" aria-controls="cms-menu" aria-label="Mở điều hướng">
+            <i class="ri ri-menu-line" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="cms-icon-button cms-desktop-menu-toggle" data-cms-sidebar-toggle hidden
+                aria-controls="cms-menu" aria-expanded="true" aria-label="Ẩn điều hướng" title="Ẩn điều hướng">
+            <i class="ri ri-side-bar-line" aria-hidden="true"></i>
+        </button>
+        <nav class="cms-breadcrumb" aria-label="Vị trí hiện tại">
+            @if (!isHome)
+            {
+                <a asp-controller="Home" asp-action="Index" aria-label="Tổng quan" title="Tổng quan">
+                    <i class="ri ri-home-5-line" aria-hidden="true"></i>
+                </a>
+                <i class="ri ri-arrow-right-s-line" aria-hidden="true"></i>
+            }
+            <span aria-current="page">@title</span>
+        </nav>
+        <partial name="Sections/_ThemeToggle" />
+        @if (user is not null)
+        {
+            <div class="dropdown cms-account">
+                <button type="button" class="cms-account-button" data-bs-toggle="dropdown" aria-expanded="false"
+                        aria-label="Tùy chọn tài khoản @name">
+                    <span class="cms-avatar" aria-hidden="true"><i class="ri ri-user-3-line"></i></span>
+                    <span class="cms-account-name">@name</span>
+                    <i class="ri ri-arrow-down-s-line cms-account-chevron" aria-hidden="true"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end cms-account-menu">
+                    <div class="cms-account-details">
+                        <strong>@name</strong>
+                        @if (!string.IsNullOrWhiteSpace(user.Email))
+                        {
+                            <span>@user.Email</span>
+                        }
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" asp-controller="Auth" asp-action="Logout">
+                        <i class="ri ri-logout-box-r-line" aria-hidden="true"></i> Đăng xuất
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</header>

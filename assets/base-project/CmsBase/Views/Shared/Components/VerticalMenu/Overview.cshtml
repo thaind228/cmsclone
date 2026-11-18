@@ -1,0 +1,53 @@
+@model IReadOnlyList<CmsNavigationGroup>
+
+<section id="cms-functions" class="cms-functions" aria-labelledby="cms-functions-title">
+    <div class="cms-section-header">
+        <div>
+            <h2 id="cms-functions-title">Chức năng quản trị</h2>
+            <p>Mở công cụ bạn cần từ các nhóm chức năng bên dưới.</p>
+        </div>
+        @if (Model.Count > 0)
+        {
+            <label class="cms-search" for="cms-function-search" hidden>
+                <span class="visually-hidden">Tìm chức năng</span>
+                <i class="ri ri-search-line" aria-hidden="true"></i>
+                <input id="cms-function-search" type="search" autocomplete="off" placeholder="Tìm chức năng…" />
+            </label>
+        }
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="cms-empty">
+            <i class="ri ri-lock-line cms-feature-icon" aria-hidden="true"></i>
+            <h3>Chưa có chức năng được cấp quyền</h3>
+            <p>Liên hệ quản trị viên nếu bạn cần quyền truy cập.</p>
+        </div>
+    }
+    else
+    {
+        <div class="cms-function-grid">
+            @foreach (var group in Model)
+            {
+                <section class="cms-function-card" data-function-group>
+                    <div class="cms-function-header">
+                        <span class="cms-feature-icon"><i class="ri @group.Icon" aria-hidden="true"></i></span>
+                        <h3>@group.Name</h3>
+                    </div>
+                    <ul class="cms-function-links">
+                        @foreach (var link in group.Links)
+                        {
+                            <li data-function-link>
+                                <a asp-controller="@link.Controller" asp-action="@link.Action">
+                                    <span>@link.Name</span>
+                                    <i class="ri ri-arrow-right-up-line" aria-hidden="true"></i>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                </section>
+            }
+        </div>
+        <p class="cms-empty" data-no-functions role="status" hidden>Không tìm thấy chức năng phù hợp.</p>
+    }
+</section>

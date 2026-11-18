@@ -1,0 +1,29 @@
+<link rel="stylesheet" href="~/vendor/css/core.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/cms-icons.css" asp-append-version="true" />
+
+@if (ViewData["MinimalAssets"] is not true)
+{
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+}
+@if (ViewData["UseDatepicker"] is true)
+{
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/air-datepicker@3.5.3/air-datepicker.css" />
+}
+@if (ViewData["UseSelect2"] is true)
+{
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+}
+@if (ViewData["UseDataTables"] is true)
+{
+    <link rel="stylesheet" href="~/vendor/css/dataTables.bootstrap5.min.css" asp-append-version="true" />
+}
+@if (ViewData["UseTreeView"] is true)
+{
+    <link rel="stylesheet" href="~/vendor/css/bootstrap-treeview.css" asp-append-version="true" />
+}
+@if (ViewData["UseEditor"] is true)
+{
+    <link rel="stylesheet" href="~/lib/ckeditor5/ckeditor5.css" asp-append-version="true" />
+}
+
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />

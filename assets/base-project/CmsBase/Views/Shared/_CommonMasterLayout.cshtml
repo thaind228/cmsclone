@@ -1,0 +1,26 @@
+@{
+    var brand = ViewData["CmsBrand"] as string ?? "CMS";
+    var title = ViewData["Title"] as string;
+}
+
+<!DOCTYPE html>
+<html lang="vi" dir="ltr" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@(string.IsNullOrWhiteSpace(title) ? brand : $"{title} | {brand}")</title>
+    <link rel="icon" type="image/x-icon" href="~/img/favicon/favicon.ico" />
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+    @await Html.PartialAsync("Sections/_Styles")
+    @await RenderSectionAsync("VendorStyles", required: false)
+    @await RenderSectionAsync("PageStyles", required: false)
+</head>
+<body data-cms-image-picker-url="@Url.Action("ImagePicker", "Storage")">
+    @RenderBody()
+
+    @await Html.PartialAsync("Sections/_Scripts")
+    @await RenderSectionAsync("VendorScripts", required: false)
+    @await RenderSectionAsync("PageScripts", required: false)
+</body>
+</html>
