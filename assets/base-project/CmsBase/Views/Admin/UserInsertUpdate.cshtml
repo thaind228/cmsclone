@@ -146,7 +146,7 @@ else
 @section PageScripts {
     <script>
         function gobackListUser() {
-            window.location.href =  appPath + "Admin/ManagerUser";
+            window.location.href = '@Url.Action("ManagerUser", "Admin")';
         }
 
         @if (TempData["Success"] != null)

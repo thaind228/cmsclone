@@ -29,13 +29,7 @@
                 </tr>
             </thead>
             <tbody>
-                @if (Model == null || !Model.Any())
-                {
-                    <tr>
-                        <td colspan="4" class="text-center text-muted">Không có dữ liệu</td>
-                    </tr>
-                }
-                else
+                @if (Model != null)
                 {
                     foreach (var item in Model)
                     {
@@ -114,9 +108,19 @@
 
 
         $(document).ready(function () {
-            adminTable = $('#userTable').DataTable({
+            $('#userTable').DataTable({
                 pageLength: 10,
-                stateSave: false,
+                stateSave: true,
+                stateDuration: -1,
+                initComplete: function () {
+                    const table = this.api();
+                    const saved = table.state.loaded();
+                    if (!saved || saved.length <= 0) return;
+
+                    const page = table.page.info();
+                    const target = Math.min(Math.floor(saved.start / saved.length), Math.max(0, page.pages - 1));
+                    if (page.page !== target) table.page(target).draw('page');
+                },
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/vi.json'
                 }

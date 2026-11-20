@@ -42,6 +42,8 @@ Hỏi người dùng chọn **Tạo mới** hay **Sửa / nâng cấp** nếu h�
 4. Lấy danh sách màn hình cần có mục menu từ các route hiển thị trang và mã kiểm tra quyền. Đối chiếu với nhóm, URL và `ActionName` trong DB đang dùng. Khi màn hình đã có nhưng thiếu mục menu, tạo nhóm hoặc bản ghi con còn thiếu theo [quy trình đăng ký trong DB](assets/base-project/README.md#menu-và-phân-quyền). Khi route đã đổi, cập nhật bản ghi khớp chắc chắn và giữ `FunctionID`. Giữ trạng thái ẩn, vô hiệu hóa và quyền đã cấp của các bản ghi hiện có trừ khi yêu cầu thay đổi chúng.
    - Dùng kết nối của project hoặc tài khoản trong doc cho DB đích đã xác định. Nếu chưa kết nối được DB, tiếp tục sửa phần code có thể xác minh và bàn giao script chạy lại được để đối chiếu rồi bổ sung các mục thiếu trên DB. Chỉ hỏi link sheet hoặc thông tin SSO khi cần cho phần đang sửa.
 
+Khi tạo hoặc sửa màn hình danh sách có bộ lọc và phân trang, giữ các giá trị này khi quay về từ form thêm/sửa, bấm **Quay về** hoặc **Hủy** trước khi lưu, và sau khi xóa. Dùng [mẫu lưu trạng thái danh sách](assets/base-project/README.md#giữ-trạng-thái-danh-sách) phù hợp với cơ chế phân trang đang dùng.
+
 ## Kiểm tra bàn giao
 
 Build solution bằng .NET 9. Kiểm tra địa chỉ lắng nghe, đường dẫn cấu hình, cấu hình SSO/Storage và các SP của từng màn hình. Kiểm tra nhóm menu nghiệp vụ và thử truy cập URL trực tiếp với user có quyền và user thiếu quyền theo hướng dẫn của project nền. Chỉ dùng metadata khi khảo sát SP. Dùng dữ liệu mẫu hoặc môi trường kiểm thử được chỉ định để chạy thao tác ghi. Bàn giao project và nêu rõ mục còn chờ cấu hình hoặc chưa kiểm tra với SQL Server/SSO thật.

@@ -80,7 +80,7 @@
 @section PageScripts {
     <script>
         function gobackListFunction() {
-            window.location.href =  appPath + "Admin/ManagerFunction";
+            window.location.href = '@Url.Action("ManagerFunction", "Admin")';
         }
 
         @if (TempData["Success"] != null)

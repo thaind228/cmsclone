@@ -31,6 +31,12 @@ View dùng chung sidebar, giao diện sáng/tối và các lớp `cms-list-card`
 
 `CmsBase/DataAccess/spDataAccess.tt` là tùy chọn sinh DAO cho SP nghiệp vụ. Điền danh sách `schema.procedure` và connection string trên bản sao, rồi chạy **Run Custom Tool**. Với CLI .NET Framework, dùng `TextTransform.exe DataAccess/spDataAccess.tt -out DataAccess/spDataAccess.Generated.cs`. Nếu CLI lấy nhầm phiên bản System.Data, truyền `-P` với thư mục chứa `System.Data.dll` đúng kiến trúc của TextTransform. File `spDataAccess.Generated.cs` bổ sung vào lớp DAO dạng partial. T4 chỉ mô tả result set đầu tiên bằng metadata. Với SP dùng nhiều result set hoặc schema động, dùng hợp đồng đã xác minh để viết adapter phù hợp.
 
+## Giữ trạng thái danh sách
+
+Bảng DataTables lưu bộ lọc và số trang theo từng tab bằng `stateSave: true` và `stateDuration: -1`, như màn hình Quản lý người dùng. Khi dữ liệu thay đổi, khôi phục trang đã lưu hoặc trang hợp lệ gần nhất nếu tổng số trang giảm.
+
+Với danh sách phân trang phía server, giữ bộ lọc và số trang trong query string. Tạo URL quay về từ route danh sách và các tham số lọc đã kiểm tra ngay lúc mở form. Dùng cùng URL sau khi lưu và khi bấm **Quay về** hoặc **Hủy**, kể cả khi form chưa gửi dữ liệu. Sau khi xóa, giữ các bộ lọc và giới hạn số trang theo kết quả mới.
+
 ## Chọn ảnh trên form
 
 Bật `ViewData["UseImagePicker"] = true;` trong view chính dùng layout CMS, kể cả khi các trường thêm/sửa nằm trong partial tải qua AJAX. Giữ tên, kiểu input và validation hiện có. Đặt input URL ảnh và nút **Browse** trong cùng `input-group`; mỗi cặp điền vào ô của chính nó.
